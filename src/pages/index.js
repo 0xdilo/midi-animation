@@ -351,7 +351,7 @@ export default function Home() {
       <Canvas 
         shadows 
         camera={{ 
-          position: [-30, 0, 10],
+          position: [-30, 5, 10],
           fov: 20,
         }}
         style={{

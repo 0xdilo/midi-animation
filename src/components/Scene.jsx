@@ -6,13 +6,13 @@ import City from "./City";
 
 // Constants
 const CAMERA_CONFIG = {
-  
   target: [-4, 1, -2],
-  distance: 20,
+  distance: 30,
+  rotationSpeed: 0.1, // Controls the overall rotation speed
   limits: {
     azimuth: {
       min: -Math.PI / 2.5,
-      max: Math.PI / 2.5
+      max: Math.PI / 1.4
     },
     polar: {
       min: Math.PI / 3,
@@ -44,10 +44,60 @@ export function Scene({ lightColor, play }) {
   const orbitControlsRef = useRef();
   const currentSpeedRef = useRef(0);
   const startTimeRef = useRef(null);
+  const cameraStartTimeRef = useRef(null);
+  const initialCameraRef = useRef({ azimuth: 0, polar: CAMERA_CONFIG.limits.polar.min });
   
   const targetSpeed = play ? MOVEMENT_CONFIG.targetSpeed : 0;
 
   useFrame(({ clock }) => {
+// Handle camera rotation
+if (orbitControlsRef.current) {
+  // Store initial camera angles when component mounts
+  if (!initialCameraRef.current.isSet) {
+    initialCameraRef.current.azimuth = orbitControlsRef.current.getAzimuthalAngle();
+    initialCameraRef.current.polar = orbitControlsRef.current.getPolarAngle();
+    initialCameraRef.current.isSet = true;
+  }
+
+  if (!play) {
+    // When not playing, reset to initial position
+    cameraStartTimeRef.current = null;
+    orbitControlsRef.current.setAzimuthalAngle(initialCameraRef.current.azimuth);
+    orbitControlsRef.current.setPolarAngle(initialCameraRef.current.polar);
+    return;
+  }
+
+  // Start rotation when play becomes true
+  if (play && cameraStartTimeRef.current === null) {
+    cameraStartTimeRef.current = clock.getElapsedTime();
+  
+  }
+
+  if (play) {
+    const t = (clock.getElapsedTime() - cameraStartTimeRef.current) * CAMERA_CONFIG.rotationSpeed;
+    
+    // Calculate smooth azimuth rotation starting from initial position
+    const azimuthRange = CAMERA_CONFIG.limits.azimuth.max;
+    const azimuthOffset = Math.sin(t) * (azimuthRange); 
+    const azimuth = initialCameraRef.current.azimuth + azimuthOffset;
+    
+    // Calculate smooth polar angle starting from initial position
+    const polarRange = CAMERA_CONFIG.limits.polar.max;
+    const polarOffset = Math.sin(t) * (polarRange);
+    const polar = initialCameraRef.current.polar + polarOffset;
+    
+    // Calculate smooth distance variation
+    const distanceBase = CAMERA_CONFIG.distance;
+    const distance = distanceBase + 
+      Math.sin(t * 0.19) * 1.5 + 
+      Math.sin(t * 0.07) * 0.5;
+    
+    orbitControlsRef.current.setAzimuthalAngle(azimuth);
+    orbitControlsRef.current.setPolarAngle(polar);
+    orbitControlsRef.current.minDistance = distance;
+    orbitControlsRef.current.maxDistance = distance;
+  }
+}
 
     const updatePosition = () => {
       if (!groupRef.current) return;
@@ -83,8 +133,6 @@ export function Scene({ lightColor, play }) {
 
   return (
     <>
-
-      
       <pointLight 
         position={[-50, 5, 50]} 
         intensity={10} 
@@ -114,7 +162,7 @@ export function Scene({ lightColor, play }) {
         ref={orbitControlsRef}
         enablePan={false} 
         enableZoom={true}
-        enableRotate={true}
+        enableRotate={false}
         minPolarAngle={CAMERA_CONFIG.limits.polar.min}
         maxPolarAngle={CAMERA_CONFIG.limits.polar.max}
         minAzimuthAngle={CAMERA_CONFIG.limits.azimuth.min}
