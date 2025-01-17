@@ -148,4 +148,4 @@ export default function Model(props) {
   )
 }
 
-useGLTF.preload('/scene.gltf')
+useGLTF.preload('/car/scene.gltf')

@@ -52,4 +52,4 @@ export default function Model({
   )
 }
 
-useGLTF.preload('/scene-transformed.glb')
+useGLTF.preload('/city/scene-transformed.glb')
