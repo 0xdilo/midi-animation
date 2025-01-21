@@ -1,8 +1,45 @@
 import { useFrame } from "@react-three/fiber";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { OrbitControls } from "@react-three/drei";
 import Car from "./Car";
 import City from "./City";
+
+import Car1 from "../components/Cars/Car1.jsx";
+import Car2 from "../components/Cars/Car2.jsx";
+import Car4 from "../components/Cars/Car4.jsx";
+import Car5 from "../components/Cars/Car5.jsx";
+
+export const CARS_CONFIG = {
+  spawnInterval: [5, 10], // Min and max seconds between spawns
+  speeds: {
+    playing: [150, 170, 190], // Speeds when play is true (negative for opposite direction)
+    idle: [60, 70, 80], // Speeds when play is false
+  },
+  positions: [
+    {
+      z: 2.7,
+      model: "Car1",
+      rotation: [0, Math.PI / 2, 0],
+    },
+    {
+      z: 2.4,
+      model: "Car2",
+      rotation: [0, Math.PI / 2, 0],
+    },
+    {
+      z: 3.7,
+      model: "Car4",
+      rotation: [0, Math.PI / 2, 0],
+    },
+    {
+      z: 2.7,
+      model: "Car5",
+      rotation: [0, Math.PI / 2, 0],
+    },
+  ],
+  startX: -400, // Where cars spawn from (left side)
+  endX: 150, // Where cars disappear (right side)
+};
 
 // Constants
 const CAMERA_CONFIG = {
@@ -47,6 +84,10 @@ export function Scene({ lightColor, play }) {
     azimuth: 0,
     polar: CAMERA_CONFIG.limits.polar.min,
   });
+
+  // State for spawned cars
+  const [oppositeCars, setOppositeCars] = useState([]);
+  const lastSpawnTime = useRef(0);
 
   const targetSpeed = play ? MOVEMENT_CONFIG.targetSpeed : 0;
 
@@ -134,6 +175,52 @@ export function Scene({ lightColor, play }) {
     };
 
     updatePosition();
+
+    // Handle opposite cars spawning and movement
+    const now = clock.getElapsedTime();
+
+    if (
+      now - lastSpawnTime.current >
+        getRandomBetween(...CARS_CONFIG.spawnInterval)
+    ) {
+      const randomCarConfig = CARS_CONFIG
+        .positions[Math.floor(Math.random() * CARS_CONFIG.positions.length)];
+      // Select speed based on play state
+      const speedArray = play
+        ? CARS_CONFIG.speeds.playing
+        : CARS_CONFIG.speeds.idle;
+      const speed = speedArray[Math.floor(Math.random() * speedArray.length)];
+
+      setOppositeCars((prev) => [
+        ...prev,
+        {
+          id: now,
+          model: randomCarConfig.model,
+          position: [CARS_CONFIG.startX, -1, randomCarConfig.z],
+          speed: speed, // Negative speed for opposite direction
+          rotation: randomCarConfig.rotation,
+        },
+      ]);
+
+      lastSpawnTime.current = now;
+    }
+
+    // Update car positions (cars move regardless of play state)
+    setOppositeCars((prev) =>
+      prev.map((car) => {
+        // Calculate the effective speed based on play state
+        const effectiveSpeed = play ? car.speed : (car.speed * 0.5); // Slow down when not playing
+        return {
+          ...car,
+          position: [
+            car.position[0] + (effectiveSpeed * 0.016),
+            car.position[1],
+            car.position[2],
+          ],
+        };
+      })
+        .filter((car) => car.position[0] < CARS_CONFIG.endX)
+    );
   });
 
   return (
@@ -164,18 +251,41 @@ export function Scene({ lightColor, play }) {
       </group>
 
       <OrbitControls
-        ref={orbitControlsRef}
-        enablePan={false}
-        enableZoom={true}
-        enableRotate={false}
-        minPolarAngle={CAMERA_CONFIG.limits.polar.min}
-        maxPolarAngle={CAMERA_CONFIG.limits.polar.max}
-        minAzimuthAngle={CAMERA_CONFIG.limits.azimuth.min}
-        maxAzimuthAngle={CAMERA_CONFIG.limits.azimuth.max}
-        minDistance={15}
-        maxDistance={30}
-        target={CAMERA_CONFIG.target}
+        //ref={orbitControlsRef}
+        // enablePan={false}
+        // enableZoom={true}
+        // enableRotate={false}
+        // minPolarAngle={CAMERA_CONFIG.limits.polar.min}
+        // maxPolarAngle={CAMERA_CONFIG.limits.polar.max}
+        // minAzimuthAngle={CAMERA_CONFIG.limits.azimuth.min}
+        // maxAzimuthAngle={CAMERA_CONFIG.limits.azimuth.max}
+        // minDistance={15}
+        // maxDistance={30}
+        // target={CAMERA_CONFIG.target}
       />
+
+      {/* Render opposite cars */}
+      {oppositeCars.map((car) => {
+        const CarComponent = {
+          Car1,
+          Car2,
+          Car4,
+          Car5,
+        }[car.model];
+
+        return (
+          <CarComponent
+            key={car.id}
+            position={car.position}
+            rotation={car.rotation}
+          />
+        );
+      })}
     </>
   );
+}
+
+// Helper function to get random number between min and max
+function getRandomBetween(min, max) {
+  return Math.random() * (max - min) + min;
 }

@@ -198,6 +198,7 @@ export default function Home() {
       <Menu menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
 
       {/* Start Screen */}
+      {/* todo fix */}
       {!play && (
         <div
           style={{
