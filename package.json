@@ -9,14 +9,14 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@react-three/drei": "^9.117.3",
-    "@react-three/fiber": "^8.17.10",
+    "@react-three/drei": "^9.122.0",
+    "@react-three/fiber": "^8.18.0",
     "@types/three": "^0.149.0",
     "midi-player-js": "^2.0.16",
     "next": "13.1.6",
     "react": "18.2.0",
     "react-dom": "18.2.0",
-    "react-icons": "^5.4.0",
+    "react-icons": "^5.5.0",
     "react-midi-player": "^1.0.8",
     "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.1",

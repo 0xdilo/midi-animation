@@ -1,12 +1,10 @@
-// pages/index.js
 import { Canvas } from "@react-three/fiber";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useMemo, useCallback, useEffect, useRef, useState } from "react";
 import io from "socket.io-client";
 import { Effects } from "../components/Effects";
 import { Scene } from "../components/Scene";
 import Menu from "../components/Menu"; // Import the new Menu component
 
-// Scene colors and their complementary directional light colors
 const colorPairs = [
   { scene: "#FF1493", light: "#00EB6C" }, // Deep pink & Spring green
   { scene: "#00FF7F", light: "#FF0080" }, // Spring green & Deep pink
@@ -18,6 +16,13 @@ const colorPairs = [
   { scene: "#9400D3", light: "#6BFF2C" }, // Dark violet & Lime green
 ];
 
+// Tracks data structure matching Menu.js album data
+const TRACKS = {
+  "Song 1": { audio: "/traccia.mp3" },
+  "Song 2": { audio: "/traccia.mp3" },
+  "Song 3": { audio: "/traccia.mp3" },
+};
+
 export default function Home() {
   const [socket, setSocket] = useState(null);
   const [play, setPlay] = useState(false);
@@ -27,6 +32,8 @@ export default function Home() {
   });
   const [lightColor, setLightColor] = useState("#ffffff");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [currentCarIndex, setCurrentCarIndex] = useState(0);
+  const [currentSongIndex, setCurrentSongIndex] = useState(0);
 
   const audioRef = useRef(null);
   const startTimeRef = useRef(null);
@@ -77,17 +84,16 @@ export default function Home() {
 
     const track = event.track % 2;
     const isNoteOn = event.name === "Note on";
+    const intensity = isNoteOn ? event.velocity / 127 : 0; // Normalize velocity (0-127) to 0-1
+    const shakeTrigger = isNoteOn && track === 1; // Trigger shake for track 1 "Note on"
 
-    if (isNoteOn) {
-      if (track === 0) {
-        const randomPair =
-          colorPairs[Math.floor(Math.random() * colorPairs.length)];
-        console.log("💡 Track 0 - Changing colors:", randomPair);
-        setLightColor({
-          scene: randomPair.scene,
-          directional: randomPair.light,
-        });
-      }
+    if (isNoteOn && track === 0) {
+      const randomPair = colorPairs[Math.floor(Math.random() * colorPairs.length)];
+      console.log("💡 Track 0 - Changing colors:", randomPair);
+      setLightColor({
+        scene: randomPair.scene,
+        directional: randomPair.light,
+      });
     }
 
     setInstruments((prev) => ({
@@ -95,6 +101,8 @@ export default function Home() {
       [track]: {
         value: isNoteOn ? 2 : 1,
         noteOn: isNoteOn,
+        intensity: track === 1 ? intensity : 0, // Intensity for particles on track 1
+        shakeTrigger: track === 1 ? shakeTrigger : false, // Shake for track 1
       },
     }));
   };
@@ -195,7 +203,45 @@ export default function Home() {
       )}
 
       {/* Menu Overlay */}
-      <Menu menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
+      <Menu
+        menuOpen={menuOpen}
+        setMenuOpen={setMenuOpen}
+        audioControls={{
+          isPlaying: play,
+          onPlay: (trackTitle) => {
+            if (!socket?.connected) return;
+            audioRef.current = new Audio(TRACKS[trackTitle].audio);
+            audioRef.current.volume = 0.8;
+            startTimeRef.current = Date.now();
+            socket.emit("playTrack", trackTitle);
+            audioRef.current.play().then(() => setPlay(true));
+            const index = ["Song 1", "Song 2", "Song 3"].indexOf(trackTitle);
+            setCurrentCarIndex(index);
+            setCurrentSongIndex(index);
+          },
+          onStop: () => {
+            socket.emit("stopTrack");
+            audioRef.current.pause();
+            setPlay(false);
+          },
+          onSkip: (trackTitle) => {
+            socket.emit("playTrack", trackTitle);
+            audioRef.current.src = TRACKS[trackTitle].audio;
+            audioRef.current.play();
+            const index = ["Song 1", "Song 2", "Song 3"].indexOf(trackTitle);
+            setCurrentCarIndex(index);
+            setCurrentSongIndex(index);
+          },
+          onPrevious: (trackTitle) => {
+            socket.emit("playTrack", trackTitle);
+            audioRef.current.src = TRACKS[trackTitle].audio;
+            audioRef.current.play();
+            const index = ["Song 1", "Song 2", "Song 3"].indexOf(trackTitle);
+            setCurrentCarIndex(index);
+            setCurrentSongIndex(index);
+          },
+        }}
+      />
 
       {/* Start Screen */}
       {/* todo fix */}
@@ -207,7 +253,6 @@ export default function Home() {
             left: 0,
             width: "100%",
             height: "100%",
-            background: "rgba(0,0,0,0.85)",
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
@@ -219,7 +264,11 @@ export default function Home() {
             style={{
               animation: "pulse 2s infinite",
               textAlign: "center",
+                cursor: "pointer",
+
             }}
+              onClick={handleStart}
+
           >
             <h1
               style={{
@@ -227,20 +276,19 @@ export default function Home() {
                 fontFamily: '"Press Start 2P", cursive',
                 fontSize: "40px",
                 textShadow: "4px 4px 0px #accbf1",
-                marginBottom: "50px",
               }}
             >
-              I DRIVE
+             ROGIAN 
             </h1>
             <button
-              onClick={handleStart}
               style={{
                 background: "none",
                 border: "none",
                 color: "#fff",
                 fontFamily: '"Press Start 2P", cursive',
-                fontSize: "20px",
                 cursor: "pointer",
+
+                fontSize: "20px",
                 textShadow: "2px 2px 0px #000",
                 animation: "blink 1s infinite",
               }}
@@ -287,8 +335,8 @@ export default function Home() {
       <Canvas
         shadows
         camera={{
-          position: [-30, 5, 10],
-          fov: 20,
+          position: [-10, 5, 2],
+          fov: 60,
         }}
         style={{
           background: `url('/sunset.jpg') no-repeat center center`,
@@ -319,8 +367,9 @@ export default function Home() {
           lightColor={lightColor.directional}
           setLightColor={setLightColor}
           play={play}
+          currentCarIndex={currentCarIndex}
         />
-        <Effects />
+        <Effects currentSongIndex={currentSongIndex} />
       </Canvas>
     </div>
   );

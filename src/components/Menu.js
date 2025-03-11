@@ -1,16 +1,21 @@
 // components/Menu.js
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { TextureLoader } from "three";
 import { FaGlobe, FaInstagram, FaTwitter } from "react-icons/fa"; // Icons for buttons and social links
 
-export default function Menu(
-  { menuOpen, setMenuOpen, onPlay, onStop, onSkip, onPrevious },
-) {
+export default function Menu({ menuOpen, setMenuOpen, audioControls }) {
   const [currentAlbum, setCurrentAlbum] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [windowSize, setWindowSize] = useState({ width: 0, height: 0 });
   const iconSize = 100; // Control icon size from here
+
+  // Get play state and current track from parent component
+  useEffect(() => {
+    if (audioControls) {
+      setIsPlaying(audioControls.isPlaying);
+    }
+  }, [audioControls?.isPlaying]);
 
   useEffect(() => {
     // Only execute on client side
@@ -31,24 +36,25 @@ export default function Menu(
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Example album data (replace with your actual data)
-  const albums = [
+  // Album data - for now using static data
+  // In a real implementation this would come from the API
+  const albums = useMemo(() => [
     {
       title: "Song 1",
       cover: "/album.png", // Path to the album cover image
-      audio: "/music1.mp3", // Path to the audio file
+      audio: "/traccia.mp3", // Path to the audio file
     },
     {
       title: "Song 2",
       cover: "/album2.png",
-      audio: "/music2.mp3",
+      audio: "/traccia.mp3", // Reusing the same audio file
     },
     {
       title: "Song 3",
       cover: "/album3.png",
-      audio: "/music3.mp3",
+      audio: "/traccia.mp3", // Reusing the same audio file
     },
-  ];
+  ], []);
 
   // Handle album selection
   const handleAlbumChange = (index) => {
@@ -58,25 +64,28 @@ export default function Menu(
   // Handle play/stop toggle
   const handlePlayToggle = () => {
     if (isPlaying) {
-      onStop();
+      audioControls?.onStop();
     } else {
-      onPlay(albums[currentAlbum].audio);
+      audioControls?.onPlay(albums[currentAlbum].title);
     }
-    setIsPlaying(!isPlaying);
   };
 
   // Handle skip button click
   const handleSkip = () => {
     const nextAlbum = (currentAlbum + 1) % albums.length;
     setCurrentAlbum(nextAlbum);
-    onSkip(albums[nextAlbum].audio);
+    if (isPlaying) {
+      audioControls?.onSkip(albums[nextAlbum].title);
+    }
   };
 
   // Handle previous button click
   const handlePrevious = () => {
     const prevAlbum = (currentAlbum - 1 + albums.length) % albums.length;
     setCurrentAlbum(prevAlbum);
-    onPrevious(albums[prevAlbum].audio);
+    if (isPlaying) {
+      audioControls?.onPrevious(albums[prevAlbum].title);
+    }
   };
 
   return (
@@ -387,6 +396,7 @@ export default function Menu(
           padding: "10px",
           display: "block",
           transition: "color 0.2s ease",
+          color: "#fff"
         }}
         onMouseEnter={(e) => e.currentTarget.style.color = "#FFDB58"}
         onMouseLeave={(e) => e.currentTarget.style.color = "#fff"}
@@ -418,16 +428,34 @@ export default function Menu(
 
 // 3D Album Cover with Levitation Animation
 function LevitatingAlbumCover({ textureUrl }) {
-  const texture = new TextureLoader().load(textureUrl);
+  // Use useMemo to prevent recreating texture on every render
+  const texture = useMemo(() => {
+    const loader = new TextureLoader();
+    return loader.load(textureUrl);
+  }, [textureUrl]);
+  
   const meshRef = useRef();
+  const lastTimeRef = useRef(0);
 
-  // Add levitation animation
+  // Add levitation animation with optimization
   useFrame(({ clock }) => {
-    if (meshRef.current) {
-      meshRef.current.position.y = Math.sin(clock.getElapsedTime()) * 0.5; // Smooth up and down motion
-      meshRef.current.rotation.y += 0.01; // Slow rotation
+    const currentTime = clock.getElapsedTime();
+    // Only update position and rotation every 30ms to improve performance
+    if (currentTime - lastTimeRef.current > 0.03 && meshRef.current) {
+      meshRef.current.position.y = Math.sin(currentTime) * 0.3; // Reduced motion amplitude
+      meshRef.current.rotation.y += 0.005; // Slower rotation
+      lastTimeRef.current = currentTime;
     }
   });
+
+  // Cleanup when component unmounts
+  useEffect(() => {
+    return () => {
+      if (texture) {
+        texture.dispose();
+      }
+    };
+  }, [texture]);
 
   return (
     <mesh ref={meshRef}>

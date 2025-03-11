@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useRef, useMemo, useEffect } from "react";
 import { SpotLight, useGLTF } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
@@ -7,35 +7,39 @@ export default function Model(props) {
   const { nodes, materials } = useGLTF("/car/scene.gltf");
   const { lightColor = "#ffffff" } = props;
 
-  // Create glowing materials for the headlights
-  const lightMaterial1 = new THREE.MeshPhysicalMaterial({
-    color: lightColor,
-    emissive: lightColor,
-    emissiveIntensity: 5,
-    transparent: true,
-    opacity: 0.9,
-    metalness: 0,
-    roughness: 0,
-    transmission: 1,
-    clearcoat: 1,
-    toneMapped: false,
-  });
+  // Create glowing materials for the headlights using useMemo to prevent recreation on every render
+  const [lightMaterial1, lightMaterial2, sideLightMaterial] = useMemo(() => {
+    const material1 = new THREE.MeshPhysicalMaterial({
+      color: lightColor,
+      emissive: lightColor,
+      emissiveIntensity: 5,
+      transparent: true,
+      opacity: 0.9,
+      metalness: 0,
+      roughness: 0,
+      transmission: 1,
+      clearcoat: 1,
+      toneMapped: false,
+    });
 
-  const lightMaterial2 = lightMaterial1.clone();
+    const material2 = material1.clone();
 
-  // Create side light material that changes with headlights but starts red
-  const sideLightMaterial = new THREE.MeshPhysicalMaterial({
-    color: props.lightColor === "#ffffff" ? "#F00000" : props.lightColor,
-    emissive: props.lightColor === "#ffffff" ? "#F00000" : props.lightColor,
-    emissiveIntensity: 10, // Less intense than headlights
-    transparent: true,
-    opacity: 0.9,
-    metalness: 0,
-    roughness: 0,
-    transmission: 10,
-    clearcoat: 1,
-    toneMapped: false,
-  });
+    // Create side light material that changes with headlights but starts red
+    const sideMaterial = new THREE.MeshPhysicalMaterial({
+      color: props.lightColor === "#ffffff" ? "#F00000" : props.lightColor,
+      emissive: props.lightColor === "#ffffff" ? "#F00000" : props.lightColor,
+      emissiveIntensity: 10, // Less intense than headlights
+      transparent: true,
+      opacity: 0.9,
+      metalness: 0,
+      roughness: 0,
+      transmission: 10,
+      clearcoat: 1,
+      toneMapped: false,
+    });
+    
+    return [material1, material2, sideMaterial];
+  }, [lightColor, props.lightColor]);
 
   // Create refs for all wheel groups
   const wheelRefs = {
@@ -53,6 +57,16 @@ export default function Model(props) {
       }
     });
   });
+  // Add cleanup for materials when component unmounts
+  useEffect(() => {
+    return () => {
+      // Dispose materials when component unmounts to prevent memory leaks
+      lightMaterial1.dispose();
+      lightMaterial2.dispose();
+      sideLightMaterial.dispose();
+    };
+  }, [lightMaterial1, lightMaterial2, sideLightMaterial]);
+
   return (
     <group {...props} dispose={null}>
       <group position={[0.035, 0, 0]} scale={[0.26, 0.307, 0.26]}>
