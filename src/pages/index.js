@@ -34,9 +34,18 @@ export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [currentCarIndex, setCurrentCarIndex] = useState(0);
   const [currentSongIndex, setCurrentSongIndex] = useState(0);
+  const [isFirstStart, setIsFirstStart] = useState(true);
+  const [audioPausedTime, setAudioPausedTime] = useState(0);
 
   const audioRef = useRef(null);
   const startTimeRef = useRef(null);
+  const lastPausedPosition = useRef(null);
+  const playingRef = useRef(false); // Ref to track play state for event handlers
+
+  // Update the playingRef whenever play state changes
+  useEffect(() => {
+    playingRef.current = play;
+  }, [play]);
 
   // Socket initialization
   useEffect(() => {
@@ -58,19 +67,24 @@ export default function Home() {
     });
 
     sock.on("midiEvent", (event) => {
-      const currentTime = Date.now() - startTimeRef.current;
-      const delay = event.time - currentTime;
+      // Only process events if we're playing (using ref for closure issues)
+      if (playingRef.current) {
+        const currentTime = Date.now() - startTimeRef.current;
+        const delay = event.time - currentTime;
 
-      setTimeout(() => {
-        handleMidiEvent(event);
-      }, Math.max(0, delay));
+        setTimeout(() => {
+          // Check again when the timeout fires in case play state changed
+          if (playingRef.current) {
+            handleMidiEvent(event);
+          }
+        }, Math.max(0, delay));
+      }
     });
 
     return () => {
       if (sock) sock.disconnect();
       if (audioRef.current) {
         audioRef.current.pause();
-        audioRef.current.currentTime = 0;
       }
     };
   }, []);
@@ -119,23 +133,36 @@ export default function Home() {
       return;
     }
 
-    audioRef.current = new Audio("/traccia.mp3");
-    audioRef.current.volume = 0.8;
+    if (!audioRef.current) {
+      audioRef.current = new Audio("/traccia.mp3");
+      audioRef.current.volume = 0.8;
+    }
 
-    console.log("🚀 Emitting start event");
-    startTimeRef.current = Date.now();
-    socket.emit("start");
+    if (audioPausedTime > 0) {
+      const timeOffsetMs = audioPausedTime * 1000;
+      startTimeRef.current = Date.now() - timeOffsetMs;
+      audioRef.current.currentTime = audioPausedTime;
+      console.log("🚀 Emitting start event with resume position:", { timeOffsetMs });
+      socket.emit("start", { resumeFrom: timeOffsetMs });
+    } else {
+      console.log("🚀 Emitting initial start event");
+      startTimeRef.current = Date.now();
+      audioRef.current.currentTime = 0; // Ensure fresh start resets to 0
+      setAudioPausedTime(0); // Reset paused time
+      socket.emit("start");
+    }
 
     audioRef.current.play()
       .then(() => {
         console.log("🎵 Audio started");
         setPlay(true);
+        setIsFirstStart(false);
       })
       .catch((error) => {
         console.error("Audio playback error:", error);
         setPlay(false);
       });
-  }, [socket]);
+  }, [socket, audioPausedTime]);
 
   return (
     <div style={{ width: "100vw", height: "100vh", position: "relative" }}>
@@ -210,23 +237,47 @@ export default function Home() {
           isPlaying: play,
           onPlay: (trackTitle) => {
             if (!socket?.connected) return;
-            audioRef.current = new Audio(TRACKS[trackTitle].audio);
+
+            if (!audioRef.current) {
+              audioRef.current = new Audio(TRACKS[trackTitle].audio);
+            }
             audioRef.current.volume = 0.8;
-            startTimeRef.current = Date.now();
-            socket.emit("playTrack", trackTitle);
-            audioRef.current.play().then(() => setPlay(true));
+
+            const timeOffsetMs = audioPausedTime * 1000;
+            console.log(`Resuming from ${audioPausedTime} seconds / ${timeOffsetMs}ms`);
+
+            audioRef.current.currentTime = audioPausedTime;
+            startTimeRef.current = Date.now() - timeOffsetMs;
+            socket.emit("playTrack", trackTitle, { resumeFrom: timeOffsetMs });
+
+            audioRef.current.play()
+              .then(() => {
+                setPlay(true);
+                setIsFirstStart(false);
+              })
+              .catch((err) => {
+                console.error("Error resuming audio:", err);
+              });
+
             const index = ["Song 1", "Song 2", "Song 3"].indexOf(trackTitle);
             setCurrentCarIndex(index);
             setCurrentSongIndex(index);
           },
           onStop: () => {
+            if (audioRef.current) {
+              const currentTime = audioRef.current.currentTime;
+              setAudioPausedTime(currentTime);
+              console.log(`Paused at time: ${currentTime} seconds`);
+              audioRef.current.pause();
+            }
             socket.emit("stopTrack");
-            audioRef.current.pause();
             setPlay(false);
           },
           onSkip: (trackTitle) => {
             socket.emit("playTrack", trackTitle);
             audioRef.current.src = TRACKS[trackTitle].audio;
+            audioRef.current.currentTime = 0;
+            setAudioPausedTime(0);
             audioRef.current.play();
             const index = ["Song 1", "Song 2", "Song 3"].indexOf(trackTitle);
             setCurrentCarIndex(index);
@@ -235,6 +286,8 @@ export default function Home() {
           onPrevious: (trackTitle) => {
             socket.emit("playTrack", trackTitle);
             audioRef.current.src = TRACKS[trackTitle].audio;
+            audioRef.current.currentTime = 0;
+            setAudioPausedTime(0);
             audioRef.current.play();
             const index = ["Song 1", "Song 2", "Song 3"].indexOf(trackTitle);
             setCurrentCarIndex(index);
@@ -245,7 +298,7 @@ export default function Home() {
 
       {/* Start Screen */}
       {/* todo fix */}
-      {!play && (
+      {!play && isFirstStart && (
         <div
           style={{
             position: "absolute",
@@ -264,11 +317,9 @@ export default function Home() {
             style={{
               animation: "pulse 2s infinite",
               textAlign: "center",
-                cursor: "pointer",
-
+              cursor: "pointer",
             }}
-              onClick={handleStart}
-
+            onClick={handleStart}
           >
             <h1
               style={{
@@ -278,7 +329,7 @@ export default function Home() {
                 textShadow: "4px 4px 0px #accbf1",
               }}
             >
-             ROGIAN 
+              ROGIAN
             </h1>
             <button
               style={{
@@ -287,7 +338,6 @@ export default function Home() {
                 color: "#fff",
                 fontFamily: '"Press Start 2P", cursive',
                 cursor: "pointer",
-
                 fontSize: "20px",
                 textShadow: "2px 2px 0px #000",
                 animation: "blink 1s infinite",
@@ -368,6 +418,7 @@ export default function Home() {
           setLightColor={setLightColor}
           play={play}
           currentCarIndex={currentCarIndex}
+          lastPausedPosition={lastPausedPosition}
         />
         <Effects currentSongIndex={currentSongIndex} />
       </Canvas>

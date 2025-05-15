@@ -76,13 +76,14 @@ const CITIES_CONFIG = [
   { position: [820, -0.67, 70] },
 ];
 
-export function Scene({ lightColor, play, instruments, currentCarIndex }) {
+export function Scene({ lightColor, play, instruments, currentCarIndex, lastPausedPosition }) {
   const { camera } = useThree();
   const groupRef = useRef();
   const currentSpeedRef = useRef(0);
   const startTimeRef = useRef(null);
   const shakeIntensity = useRef(0);
   const controlsRef = useRef();
+  const lastPositionRef = useRef(null);
 
   // State for spawned cars
   const [oppositeCars, setOppositeCars] = useState([]);
@@ -100,14 +101,21 @@ export function Scene({ lightColor, play, instruments, currentCarIndex }) {
 
       if (!play && startTimeRef.current !== null) {
         const currentPosition = groupRef.current.position.x;
+        lastPositionRef.current = currentPosition;
         startTimeRef.current = null;
         currentSpeedRef.current = 0;
         groupRef.current.position.x = currentPosition;
+        lastPausedPosition.current = currentPosition;
         return;
       }
 
       if (play && startTimeRef.current === null) {
         startTimeRef.current = clock.getElapsedTime();
+        if (lastPositionRef.current !== null) {
+          groupRef.current.position.x = lastPositionRef.current;
+        } else if (lastPausedPosition.current !== null) {
+          groupRef.current.position.x = lastPausedPosition.current;
+        }
       }
 
       if (play) {
@@ -117,10 +125,11 @@ export function Scene({ lightColor, play, instruments, currentCarIndex }) {
         const playingTime = clock.getElapsedTime() - startTimeRef.current;
         const time = playingTime * currentSpeedRef.current;
         const position = time % totalDistance;
-        groupRef.current.position.x = startPosition + position;
+        groupRef.current.position.x = (lastPositionRef.current || startPosition) + position;
 
         if (groupRef.current.position.x >= endPosition) {
           groupRef.current.position.x = startPosition;
+          lastPositionRef.current = null;
         }
       }
     };
