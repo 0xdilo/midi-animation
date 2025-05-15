@@ -137,17 +137,7 @@ export default function Menu({
             },
           }}
         >
-          <h2
-            style={{
-              color: "#fff",
-              fontFamily: '"Press Start 2P", cursive',
-              fontSize: "clamp(40px, 8vw, 60px)",
-              textShadow: "4px 4px 0px #accbf1",
-              marginBottom: "20px",
-            }}
-          >
-            {/* Title can be dynamic or static */}
-          </h2>
+
 
           <div
             style={{
@@ -169,6 +159,7 @@ export default function Menu({
               fontFamily: '"Press Start 2P", cursive',
               fontSize: "clamp(24px, 5vw, 36px)",
               textShadow: "2px 2px 0px #000",
+              marginTop: "100px"
             }}
           >
             {currentAlbumDisplay?.title || "Loading Tracks..."}

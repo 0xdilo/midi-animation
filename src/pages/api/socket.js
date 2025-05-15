@@ -49,7 +49,6 @@ const ioHandler = (req, res) => {
 
       const trackInfo = TRACKS[trackTitle];
       if (!trackInfo) {
-        console.error(`Track not found: ${trackTitle}`);
         socket.emit("playbackError", {
           error: `Track "${trackTitle}" not found.`,
         });
@@ -143,7 +142,6 @@ const ioHandler = (req, res) => {
           durationMs: currentDurationMs,
         });
       } catch (error) {
-        console.error(`MIDI playback error for "${trackTitle}":`, error);
         socket.emit("playbackError", {
           error: `Failed to load or play MIDI for "${trackTitle}": ${error.message}`,
         });
@@ -173,7 +171,6 @@ const ioHandler = (req, res) => {
               lastPausedTickByTrack[lastPlayedTrackTitle] = currentTick;
               const serverElapsedMs = Date.now() - serverGlobalStartTime;
             } else {
-              console.warn(`[stopTrack:"${lastPlayedTrackTitle}"] getCurrentTick did not return a number:`, currentTick);
             }
           } else {
             // If player was already stopped or finished, lastPausedTickByTrack might already be set or should be from endOfFile

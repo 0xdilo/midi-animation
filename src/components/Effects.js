@@ -34,14 +34,14 @@ const cartoonShader = {
   `,
 };
 
+
+
 const neonWireframeShader = {
   uniforms: {
     tDiffuse: { value: null },
-    neonColor: { value: new THREE.Vector3(0.3, 1.0, 1.0) }, // Cyan
-    texelSize: { value: new THREE.Vector2(1 / 1920, 1 / 1080) },
-    edgeThreshold: { value: 0.12 },
-    glowStrength: { value: 2.5 },
-    backgroundDarkness: { value: 0.15 },
+    glowColor: { value: new THREE.Vector3(0, 1, 1) }, // Cyan neon glow
+    wireframeThreshold: { value: 0.05 },
+    glowIntensity: { value: 3.0 },
   },
   vertexShader: `
     varying vec2 vUv;
@@ -52,53 +52,30 @@ const neonWireframeShader = {
   `,
   fragmentShader: `
     uniform sampler2D tDiffuse;
-    uniform vec3 neonColor;
-    uniform vec2 texelSize;
-    uniform float edgeThreshold;
-    uniform float glowStrength;
-    uniform float backgroundDarkness;
+    uniform vec3 glowColor;
+    uniform float wireframeThreshold;
+    uniform float glowIntensity;
     varying vec2 vUv;
 
-    // Sobel edge detection
-    float sobelEdge(vec2 uv) {
-      vec3 s00 = texture2D(tDiffuse, uv + texelSize * vec2(-1.0, -1.0)).rgb;
-      vec3 s10 = texture2D(tDiffuse, uv + texelSize * vec2( 0.0, -1.0)).rgb;
-      vec3 s20 = texture2D(tDiffuse, uv + texelSize * vec2( 1.0, -1.0)).rgb;
-      vec3 s01 = texture2D(tDiffuse, uv + texelSize * vec2(-1.0,  0.0)).rgb;
-      vec3 s21 = texture2D(tDiffuse, uv + texelSize * vec2( 1.0,  0.0)).rgb;
-      vec3 s02 = texture2D(tDiffuse, uv + texelSize * vec2(-1.0,  1.0)).rgb;
-      vec3 s12 = texture2D(tDiffuse, uv + texelSize * vec2( 0.0,  1.0)).rgb;
-      vec3 s22 = texture2D(tDiffuse, uv + texelSize * vec2( 1.0,  1.0)).rgb;
-
-      vec3 gx = -s00 - 2.0*s01 - s02 + s20 + 2.0*s21 + s22;
-      vec3 gy = -s00 - 2.0*s10 - s20 + s02 + 2.0*s12 + s22;
-      return length(gx) + length(gy);
-    }
-
     void main() {
-      float edge = sobelEdge(vUv);
-      float edgeMask = smoothstep(edgeThreshold, edgeThreshold + 0.03, edge);
+      vec4 color = texture2D(tDiffuse, vUv);
+      vec2 texel = vec2(1.0 / 1920.0, 1.0 / 1080.0);
 
-      // Glow: sample in a ring around the pixel
-      float glow = 0.0;
-      float samples = 0.0;
-      for (float a = 0.0; a < 6.2831853; a += 1.5707963) { // 0, pi/2, pi, 3pi/2
-        vec2 dir = vec2(cos(a), sin(a));
-        glow += sobelEdge(vUv + dir * texelSize * 2.5);
-        samples += 1.0;
-      }
-      glow = glow / samples;
-      float glowMask = smoothstep(edgeThreshold * 0.5, edgeThreshold + 0.05, glow);
+      vec4 left = texture2D(tDiffuse, vUv - vec2(texel.x, 0.0));
+      vec4 right = texture2D(tDiffuse, vUv + vec2(texel.x, 0.0));
+      vec4 up = texture2D(tDiffuse, vUv + vec2(0.0, texel.y));
+      vec4 down = texture2D(tDiffuse, vUv - vec2(0.0, texel.y));
 
-      // Compose neon color and dark background
-      vec3 neon = neonColor * (edgeMask * 1.5 + glowMask * glowStrength);
-      vec3 bg = texture2D(tDiffuse, vUv).rgb * backgroundDarkness;
-      vec3 finalColor = mix(bg, neon, clamp(edgeMask + glowMask, 0.0, 1.0));
+      float edge = length(color.rgb - left.rgb) + length(color.rgb - right.rgb) +
+                   length(color.rgb - up.rgb) + length(color.rgb - down.rgb);
+      float wireframe = step(wireframeThreshold, edge);
 
+      vec3 finalColor = mix(color.rgb, glowColor * glowIntensity, wireframe);
       gl_FragColor = vec4(finalColor, 1.0);
     }
   `,
 };
+
 
 
 export function Effects({ currentSongIndex }) {
