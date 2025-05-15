@@ -10,8 +10,8 @@ import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass";
 const cartoonShader = {
   uniforms: {
     tDiffuse: { value: null },
-    edgeThreshold: { value: 0.1 },
-    edgeColor: { value: new THREE.Vector3(0, 0, 0) },
+    pixelSize: { value: 5.0 },
+    resolution: { value: new THREE.Vector2(1920, 1080) },
   },
   vertexShader: `
     varying vec2 vUv;
@@ -22,25 +22,14 @@ const cartoonShader = {
   `,
   fragmentShader: `
     uniform sampler2D tDiffuse;
-    uniform float edgeThreshold;
-    uniform vec3 edgeColor;
+    uniform float pixelSize;
+    uniform vec2 resolution;
     varying vec2 vUv;
 
     void main() {
-      vec4 color = texture2D(tDiffuse, vUv);
-      vec2 texel = vec2(1.0 / 1920.0, 1.0 / 1080.0);
-
-      vec4 left = texture2D(tDiffuse, vUv - vec2(texel.x, 0.0));
-      vec4 right = texture2D(tDiffuse, vUv + vec2(texel.x, 0.0));
-      vec4 up = texture2D(tDiffuse, vUv + vec2(0.0, texel.y));
-      vec4 down = texture2D(tDiffuse, vUv - vec2(0.0, texel.y));
-
-      float edge = length(color.rgb - left.rgb) + length(color.rgb - right.rgb) +
-                   length(color.rgb - up.rgb) + length(color.rgb - down.rgb);
-      edge = step(edgeThreshold, edge);
-
-      vec3 finalColor = mix(color.rgb, edgeColor, edge);
-      gl_FragColor = vec4(finalColor, color.a);
+      vec2 dxy = pixelSize / resolution;
+      vec2 coord = dxy * floor(vUv / dxy);
+      gl_FragColor = texture2D(tDiffuse, coord);
     }
   `,
 };
@@ -48,9 +37,11 @@ const cartoonShader = {
 const neonWireframeShader = {
   uniforms: {
     tDiffuse: { value: null },
-    glowColor: { value: new THREE.Vector3(0, 1, 1) }, // Cyan neon glow
-    wireframeThreshold: { value: 0.15 },
-    glowIntensity: { value: 2.0 },
+    neonColor: { value: new THREE.Vector3(0.3, 1.0, 1.0) }, // Cyan
+    texelSize: { value: new THREE.Vector2(1 / 1920, 1 / 1080) },
+    edgeThreshold: { value: 0.12 },
+    glowStrength: { value: 2.5 },
+    backgroundDarkness: { value: 0.15 },
   },
   vertexShader: `
     varying vec2 vUv;
@@ -61,25 +52,49 @@ const neonWireframeShader = {
   `,
   fragmentShader: `
     uniform sampler2D tDiffuse;
-    uniform vec3 glowColor;
-    uniform float wireframeThreshold;
-    uniform float glowIntensity;
+    uniform vec3 neonColor;
+    uniform vec2 texelSize;
+    uniform float edgeThreshold;
+    uniform float glowStrength;
+    uniform float backgroundDarkness;
     varying vec2 vUv;
 
+    // Sobel edge detection
+    float sobelEdge(vec2 uv) {
+      vec3 s00 = texture2D(tDiffuse, uv + texelSize * vec2(-1.0, -1.0)).rgb;
+      vec3 s10 = texture2D(tDiffuse, uv + texelSize * vec2( 0.0, -1.0)).rgb;
+      vec3 s20 = texture2D(tDiffuse, uv + texelSize * vec2( 1.0, -1.0)).rgb;
+      vec3 s01 = texture2D(tDiffuse, uv + texelSize * vec2(-1.0,  0.0)).rgb;
+      vec3 s21 = texture2D(tDiffuse, uv + texelSize * vec2( 1.0,  0.0)).rgb;
+      vec3 s02 = texture2D(tDiffuse, uv + texelSize * vec2(-1.0,  1.0)).rgb;
+      vec3 s12 = texture2D(tDiffuse, uv + texelSize * vec2( 0.0,  1.0)).rgb;
+      vec3 s22 = texture2D(tDiffuse, uv + texelSize * vec2( 1.0,  1.0)).rgb;
+
+      vec3 gx = -s00 - 2.0*s01 - s02 + s20 + 2.0*s21 + s22;
+      vec3 gy = -s00 - 2.0*s10 - s20 + s02 + 2.0*s12 + s22;
+      return length(gx) + length(gy);
+    }
+
     void main() {
-      vec4 color = texture2D(tDiffuse, vUv);
-      vec2 texel = vec2(1.0 / 1920.0, 1.0 / 1080.0);
+      float edge = sobelEdge(vUv);
+      float edgeMask = smoothstep(edgeThreshold, edgeThreshold + 0.03, edge);
 
-      vec4 left = texture2D(tDiffuse, vUv - vec2(texel.x, 0.0));
-      vec4 right = texture2D(tDiffuse, vUv + vec2(texel.x, 0.0));
-      vec4 up = texture2D(tDiffuse, vUv + vec2(0.0, texel.y));
-      vec4 down = texture2D(tDiffuse, vUv - vec2(0.0, texel.y));
+      // Glow: sample in a ring around the pixel
+      float glow = 0.0;
+      float samples = 0.0;
+      for (float a = 0.0; a < 6.2831853; a += 1.5707963) { // 0, pi/2, pi, 3pi/2
+        vec2 dir = vec2(cos(a), sin(a));
+        glow += sobelEdge(vUv + dir * texelSize * 2.5);
+        samples += 1.0;
+      }
+      glow = glow / samples;
+      float glowMask = smoothstep(edgeThreshold * 0.5, edgeThreshold + 0.05, glow);
 
-      float edge = length(color.rgb - left.rgb) + length(color.rgb - right.rgb) +
-                   length(color.rgb - up.rgb) + length(color.rgb - down.rgb);
-      float wireframe = step(wireframeThreshold, edge);
+      // Compose neon color and dark background
+      vec3 neon = neonColor * (edgeMask * 1.5 + glowMask * glowStrength);
+      vec3 bg = texture2D(tDiffuse, vUv).rgb * backgroundDarkness;
+      vec3 finalColor = mix(bg, neon, clamp(edgeMask + glowMask, 0.0, 1.0));
 
-      vec3 finalColor = mix(color.rgb, glowColor * glowIntensity, wireframe);
       gl_FragColor = vec4(finalColor, 1.0);
     }
   `,
@@ -100,7 +115,6 @@ export function Effects({ currentSongIndex }) {
     effectComposer.addPass(renderPass);
 
     if (currentSongIndex === 0) {
-      // Default bloom effect for Song 1
       const bloomPass = new UnrealBloomPass(
         new THREE.Vector2(window.innerWidth, window.innerHeight),
         0.5,
@@ -112,11 +126,9 @@ export function Effects({ currentSongIndex }) {
       const filmPass = new FilmPass(1.35, 0.025, 648, false);
       effectComposer.addPass(filmPass);
     } else if (currentSongIndex === 1) {
-      // Cartoon shader for Song 2
       const cartoonPass = new ShaderPass(cartoonShader);
       effectComposer.addPass(cartoonPass);
     } else if (currentSongIndex === 2) {
-      // Neon wireframe shader for Song 3
       const wireframePass = new ShaderPass(neonWireframeShader);
       effectComposer.addPass(wireframePass);
     }
@@ -142,3 +154,4 @@ export function Effects({ currentSongIndex }) {
 
   return null;
 }
+

@@ -2,15 +2,24 @@
 import { useEffect, useRef, useState, useMemo } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { TextureLoader } from "three";
-import { FaGlobe, FaInstagram, FaTwitter } from "react-icons/fa"; // Icons for buttons and social links
+import { FaGlobe, FaInstagram, FaTwitter } from "react-icons/fa";
 
-export default function Menu({ menuOpen, setMenuOpen, audioControls }) {
-  const [currentAlbum, setCurrentAlbum] = useState(0);
+// Static cover paths, assuming order matches serverTracks from server
+// If serverTracks has more items than this array, covers will cycle.
+const albumCovers = ["/album.png", "/album2.png", "/album3.png"];
+
+export default function Menu({
+  menuOpen,
+  setMenuOpen,
+  audioControls,
+  albumData = [], // Expects array like [{ title: "Song 1", audioSrc: "/path" }, ...]
+  currentTrackTitle,
+}) {
+  const [currentAlbumIndex, setCurrentAlbumIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [windowSize, setWindowSize] = useState({ width: 0, height: 0 });
-  const iconSize = 100; // Control icon size from here
+  const iconSize = 100;
 
-  // Get play state and current track from parent component
   useEffect(() => {
     if (audioControls) {
       setIsPlaying(audioControls.isPlaying);
@@ -18,75 +27,70 @@ export default function Menu({ menuOpen, setMenuOpen, audioControls }) {
   }, [audioControls?.isPlaying]);
 
   useEffect(() => {
-    // Only execute on client side
     const handleResize = () => {
       setWindowSize({
         width: window.innerWidth,
         height: window.innerHeight,
       });
     };
-
-    // Set initial size
     handleResize();
-
-    // Add event listener
     window.addEventListener("resize", handleResize);
-
-    // Cleanup
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Album data - for now using static data
-  // In a real implementation this would come from the API
-  const albums = useMemo(() => [
-    {
-      title: "Song 1",
-      cover: "/album.png", // Path to the album cover image
-      audio: "/traccia.mp3", // Path to the audio file
-    },
-    {
-      title: "Song 2",
-      cover: "/album2.png",
-      audio: "/traccia.mp3", // Reusing the same audio file
-    },
-    {
-      title: "Song 3",
-      cover: "/album3.png",
-      audio: "/traccia.mp3", // Reusing the same audio file
-    },
-  ], []);
+  useEffect(() => {
+    if (albumData && albumData.length > 0) {
+      if (currentTrackTitle) {
+        const idx = albumData.findIndex(
+          (album) => album.title === currentTrackTitle,
+        );
+        if (idx !== -1) {
+          setCurrentAlbumIndex(idx);
+        } else {
+          // Fallback if currentTrackTitle isn't in albumData (e.g. list updated)
+          setCurrentAlbumIndex(0);
+        }
+      } else {
+        // Default to first album if no specific title is set yet
+        setCurrentAlbumIndex(0);
+      }
+    }
+  }, [currentTrackTitle, albumData]);
 
-  // Handle album selection
-  const handleAlbumChange = (index) => {
-    setCurrentAlbum(index);
-  };
-
-  // Handle play/stop toggle
   const handlePlayToggle = () => {
+    if (!albumData || albumData.length === 0) return;
+    const currentTrackInfo = albumData[currentAlbumIndex];
+    if (!currentTrackInfo) return;
+
     if (isPlaying) {
       audioControls?.onStop();
     } else {
-      audioControls?.onPlay(albums[currentAlbum].title);
+      audioControls?.onPlay(currentTrackInfo.title);
     }
   };
 
-  // Handle skip button click
   const handleSkip = () => {
-    const nextAlbum = (currentAlbum + 1) % albums.length;
-    setCurrentAlbum(nextAlbum);
-    if (isPlaying) {
-      audioControls?.onSkip(albums[nextAlbum].title);
-    }
+    if (!albumData || albumData.length === 0) return;
+    const nextAlbumIdx = (currentAlbumIndex + 1) % albumData.length;
+    const nextTrackInfo = albumData[nextAlbumIdx];
+    if (!nextTrackInfo) return;
+    // setCurrentAlbumIndex will be updated via useEffect reacting to currentTrackTitle prop change
+    audioControls?.onSkip(nextTrackInfo.title);
   };
 
-  // Handle previous button click
   const handlePrevious = () => {
-    const prevAlbum = (currentAlbum - 1 + albums.length) % albums.length;
-    setCurrentAlbum(prevAlbum);
-    if (isPlaying) {
-      audioControls?.onPrevious(albums[prevAlbum].title);
-    }
+    if (!albumData || albumData.length === 0) return;
+    const prevAlbumIdx =
+      (currentAlbumIndex - 1 + albumData.length) % albumData.length;
+    const prevTrackInfo = albumData[prevAlbumIdx];
+    if (!prevTrackInfo) return;
+    // setCurrentAlbumIndex will be updated via useEffect reacting to currentTrackTitle prop change
+    audioControls?.onPrevious(prevTrackInfo.title);
   };
+
+  const currentAlbumDisplay = albumData[currentAlbumIndex];
+  const currentCover =
+    albumCovers[currentAlbumIndex % albumCovers.length] || "/album.png"; // Fallback cover
 
   return (
     <div
@@ -95,7 +99,7 @@ export default function Menu({ menuOpen, setMenuOpen, audioControls }) {
         bottom: 0,
         left: "50%",
         transform: `translateX(-50%) translateY(${menuOpen ? "0" : "100%"})`,
-        zIndex: 25,
+        zIndex: 25, // Ensure this is high enough, but index.js button is 20
         width: "100%",
         height: "100%",
         background: "rgba(0,0,0,0.85)",
@@ -104,7 +108,7 @@ export default function Menu({ menuOpen, setMenuOpen, audioControls }) {
         flexDirection: "column",
         justifyContent: "center",
         alignItems: "center",
-        zIndex: 1000,
+        // zIndex: 1000, // This was in original, ensure it's what you want relative to other elements
       }}
     >
       <div
@@ -115,7 +119,7 @@ export default function Menu({ menuOpen, setMenuOpen, audioControls }) {
           flexDirection: "column",
           padding: "20px 0",
           overflow: "hidden",
-          "@media (max-width: 768px)": {
+          "@media (maxWidth: 768px)": {
             padding: "0",
           },
         }}
@@ -128,7 +132,7 @@ export default function Menu({ menuOpen, setMenuOpen, audioControls }) {
             flexDirection: "column",
             scrollbarWidth: "none",
             msOverflowStyle: "none",
-            "&::-webkit-scrollbar": {
+            "&::-webkitScrollbar": {
               display: "none",
             },
           }}
@@ -142,9 +146,9 @@ export default function Menu({ menuOpen, setMenuOpen, audioControls }) {
               marginBottom: "20px",
             }}
           >
+            {/* Title can be dynamic or static */}
           </h2>
 
-          {/* 3D Album Cover */}
           <div
             style={{
               width: "min(80vw, 500px)",
@@ -155,11 +159,10 @@ export default function Menu({ menuOpen, setMenuOpen, audioControls }) {
             <Canvas>
               <ambientLight intensity={0.5} />
               <pointLight position={[10, 10, 10]} />
-              <LevitatingAlbumCover textureUrl={albums[currentAlbum].cover} />
+              <LevitatingAlbumCover textureUrl={currentCover} />
             </Canvas>
           </div>
 
-          {/* Album Title */}
           <h3
             style={{
               color: "#fff",
@@ -168,7 +171,7 @@ export default function Menu({ menuOpen, setMenuOpen, audioControls }) {
               textShadow: "2px 2px 0px #000",
             }}
           >
-            {albums[currentAlbum].title}
+            {currentAlbumDisplay?.title || "Loading Tracks..."}
           </h3>
 
           {/* Control Buttons */}
@@ -195,12 +198,11 @@ export default function Menu({ menuOpen, setMenuOpen, audioControls }) {
                 height: "60px",
                 transition: "color 0.2s ease",
               }}
-              onMouseEnter={(e) => e.currentTarget.style.color = "#FFDB58"}
-              onMouseLeave={(e) => e.currentTarget.style.color = "#fff"}
+              onMouseEnter={(e) => (e.currentTarget.style.color = "#FFDB58")}
+              onMouseLeave={(e) => (e.currentTarget.style.color = "#fff")}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                xmlnsXlink="http://www.w3.org/1999/xlink"
                 viewBox="0 0 100 100"
                 width={iconSize}
                 height={iconSize}
@@ -246,42 +248,38 @@ export default function Menu({ menuOpen, setMenuOpen, audioControls }) {
                 e.currentTarget.style.borderColor = "#fff";
               }}
             >
-              {isPlaying
-                ? (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    xmlnsXlink="http://www.w3.org/1999/xlink"
-                    viewBox="0 0 100 100"
-                    width={iconSize}
-                    height={iconSize}
-                    fill="currentColor"
-                    style={{
-                      transition: "fill 0.2s ease",
-                    }}
-                  >
-                    <g>
-                      <polygon points="55,37 55,49 55,61 55,73 64,73 64,61 64,49 64,37" />
-                      <polygon points="37,49 37,61 37,73 46,73 46,61 46,49 46,37 37,37" />
-                    </g>
-                  </svg>
-                )
-                : (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    xmlnsXlink="http://www.w3.org/1999/xlink"
-                    viewBox="0 0 100 100"
-                    width={iconSize}
-                    height={iconSize}
-                    fill="currentColor"
-                  >
-                    <g>
-                      <rect x="55" y="55" width="9" height="9" />
-                      <polygon points="46,37 55,37 55,28 46,28 46,19 37,19 37,72.667 37,82 46,82 46,73 55,73 55,64 46,64  " />
-                      <rect x="55" y="37" width="9" height="9" />
-                      <rect x="64" y="46" width="9" height="9" />
-                    </g>
-                  </svg>
-                )}
+              {isPlaying ? (
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 100 100"
+                  width={iconSize}
+                  height={iconSize}
+                  fill="currentColor"
+                  style={{
+                    transition: "fill 0.2s ease",
+                  }}
+                >
+                  <g>
+                    <polygon points="55,37 55,49 55,61 55,73 64,73 64,61 64,49 64,37" />
+                    <polygon points="37,49 37,61 37,73 46,73 46,61 46,49 46,37 37,37" />
+                  </g>
+                </svg>
+              ) : (
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 100 100"
+                  width={iconSize}
+                  height={iconSize}
+                  fill="currentColor"
+                >
+                  <g>
+                    <rect x="55" y="55" width="9" height="9" />
+                    <polygon points="46,37 55,37 55,28 46,28 46,19 37,19 37,72.667 37,82 46,82 46,73 55,73 55,64 46,64  " />
+                    <rect x="55" y="37" width="9" height="9" />
+                    <rect x="64" y="46" width="9" height="9" />
+                  </g>
+                </svg>
+              )}
             </button>
             <button
               onClick={handleSkip}
@@ -299,12 +297,11 @@ export default function Menu({ menuOpen, setMenuOpen, audioControls }) {
                 height: "60px",
                 transition: "color 0.2s ease",
               }}
-              onMouseEnter={(e) => e.currentTarget.style.color = "#FFDB58"}
-              onMouseLeave={(e) => e.currentTarget.style.color = "#fff"}
+              onMouseEnter={(e) => (e.currentTarget.style.color = "#FFDB58")}
+              onMouseLeave={(e) => (e.currentTarget.style.color = "#fff")}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                xmlnsXlink="http://www.w3.org/1999/xlink"
                 viewBox="0 0 100 100"
                 width={iconSize}
                 height={iconSize}
@@ -332,7 +329,7 @@ export default function Menu({ menuOpen, setMenuOpen, audioControls }) {
             display: "flex",
             justifyContent: "center",
             gap: "15px",
-            padding: "0px",
+            padding: "0px", // Was 20px, check if 0px is intended
             width: "100%",
           }}
         >
@@ -346,8 +343,8 @@ export default function Menu({ menuOpen, setMenuOpen, audioControls }) {
               textDecoration: "none",
               transition: "color 0.2s ease",
             }}
-            onMouseEnter={(e) => e.currentTarget.style.color = "#1DA1F2"}
-            onMouseLeave={(e) => e.currentTarget.style.color = "#fff"}
+            onMouseEnter={(e) => (e.currentTarget.style.color = "#1DA1F2")}
+            onMouseLeave={(e) => (e.currentTarget.style.color = "#fff")}
           >
             <FaTwitter />
           </a>
@@ -361,8 +358,8 @@ export default function Menu({ menuOpen, setMenuOpen, audioControls }) {
               textDecoration: "none",
               transition: "color 0.2s ease",
             }}
-            onMouseEnter={(e) => e.currentTarget.style.color = "#E1306C"}
-            onMouseLeave={(e) => e.currentTarget.style.color = "#fff"}
+            onMouseEnter={(e) => (e.currentTarget.style.color = "#E1306C")}
+            onMouseLeave={(e) => (e.currentTarget.style.color = "#fff")}
           >
             <FaInstagram />
           </a>
@@ -376,8 +373,8 @@ export default function Menu({ menuOpen, setMenuOpen, audioControls }) {
               textDecoration: "none",
               transition: "color 0.2s ease",
             }}
-            onMouseEnter={(e) => e.currentTarget.style.color = "#FFDB58"}
-            onMouseLeave={(e) => e.currentTarget.style.color = "#fff"}
+            onMouseEnter={(e) => (e.currentTarget.style.color = "#FFDB58")}
+            onMouseLeave={(e) => (e.currentTarget.style.color = "#fff")}
           >
             <FaGlobe />
           </a>
@@ -396,14 +393,13 @@ export default function Menu({ menuOpen, setMenuOpen, audioControls }) {
           padding: "10px",
           display: "block",
           transition: "color 0.2s ease",
-          color: "#fff"
+          color: "#fff",
         }}
-        onMouseEnter={(e) => e.currentTarget.style.color = "#FFDB58"}
-        onMouseLeave={(e) => e.currentTarget.style.color = "#fff"}
+        onMouseEnter={(e) => (e.currentTarget.style.color = "#FFDB58")}
+        onMouseLeave={(e) => (e.currentTarget.style.color = "#fff")}
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          xmlnsXlink="http://www.w3.org/1999/xlink"
           viewBox="0 0 100 100"
           width={windowSize.width <= 768 ? 40 : 90}
           height={windowSize.width <= 768 ? 40 : 90}
@@ -426,29 +422,25 @@ export default function Menu({ menuOpen, setMenuOpen, audioControls }) {
   );
 }
 
-// 3D Album Cover with Levitation Animation
 function LevitatingAlbumCover({ textureUrl }) {
-  // Use useMemo to prevent recreating texture on every render
   const texture = useMemo(() => {
+    if (!textureUrl) return null; // Handle undefined textureUrl
     const loader = new TextureLoader();
     return loader.load(textureUrl);
   }, [textureUrl]);
-  
+
   const meshRef = useRef();
   const lastTimeRef = useRef(0);
 
-  // Add levitation animation with optimization
   useFrame(({ clock }) => {
     const currentTime = clock.getElapsedTime();
-    // Only update position and rotation every 30ms to improve performance
     if (currentTime - lastTimeRef.current > 0.03 && meshRef.current) {
-      meshRef.current.position.y = Math.sin(currentTime) * 0.3; // Reduced motion amplitude
-      meshRef.current.rotation.y += 0.005; // Slower rotation
+      meshRef.current.position.y = Math.sin(currentTime) * 0.3;
+      meshRef.current.rotation.y += 0.005;
       lastTimeRef.current = currentTime;
     }
   });
 
-  // Cleanup when component unmounts
   useEffect(() => {
     return () => {
       if (texture) {
@@ -457,6 +449,8 @@ function LevitatingAlbumCover({ textureUrl }) {
     };
   }, [texture]);
 
+  if (!texture) return null; // Don't render mesh if texture isn't loaded/available
+
   return (
     <mesh ref={meshRef}>
       <boxGeometry args={[4, 4, 0.2]} />
@@ -464,3 +458,4 @@ function LevitatingAlbumCover({ textureUrl }) {
     </mesh>
   );
 }
+

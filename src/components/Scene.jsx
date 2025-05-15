@@ -1,22 +1,22 @@
 import { useFrame, useThree } from "@react-three/fiber";
 import { useRef, useState } from "react";
 import { OrbitControls } from "@react-three/drei";
-import * as THREE from "three";
-import MainCar from "./Car";
-import MainCar2 from "./Car2";
-import MainCar3 from "./Car3";
+import { Suspense, lazy } from "react";
+
+const MainCar = lazy(() => import("./Car"));
+const MainCar2 = lazy(() => import("./Car2"));
+const MainCar3 = lazy(() => import("./Car3"));
 
 import City from "./City";
-import Car1 from "../components/Cars/Car1.jsx";
-import Car2 from "../components/Cars/Car2.jsx";
-import Car3 from "../components/Cars/Car3.jsx";
-import Car4 from "../components/Cars/Car4.jsx";
-import Car5 from "../components/Cars/Car5.jsx";
+import Car1 from "./Cars/Car1.jsx";
+import Car2 from "./Cars/Car2.jsx";
+import Car3 from "./Cars/Car3.jsx";
+import Car4 from "./Cars/Car4.jsx";
 
 
 export const CARS_CONFIG = {
   spawnInterval: [2, 8], // Min and max seconds between spawns
-  speed: 150, // Constant speed for cars
+  speed: 150,
   positions: [
     {
       z: 2.7,
@@ -29,13 +29,13 @@ export const CARS_CONFIG = {
       rotation: [0, Math.PI / 2, 0],
     },
     {
-      z: 3.7,
+      z: 3,
       model: "Car4",
       rotation: [0, Math.PI / 2, 0],
     },
     {
       z: 2.7,
-      model: "Car5",
+      model: "Car4",
       rotation: [0, Math.PI / 2, 0],
     },
   ],
@@ -148,7 +148,7 @@ export function Scene({ lightColor, play, instruments, currentCarIndex, lastPaus
       shakeIntensity.current *= 0.9;
       if (shakeIntensity.current < 0.01) shakeIntensity.current = 0;
     }
-    
+
     // Make sure controls are updated
     if (controlsRef.current) {
       controlsRef.current.update();
@@ -183,49 +183,46 @@ export function Scene({ lightColor, play, instruments, currentCarIndex, lastPaus
   return (
     <>
       <pointLight position={[-50, 5, 50]} intensity={10} color="#9933ff" distance={200} decay={2} />
-      
-         {currentCarIndex === 0 && (
-        <MainCar
-          position={[0, 0, -5]}
-          rotation={[0, -Math.PI / 2, 0]}
-          lightColor={lightColor}
-        />
-      )}
-      
-      {currentCarIndex === 1 && (
-        <MainCar2
-          position={[0, 0, -5]}
-          rotation={[0, -Math.PI / 2, 0]}
-          lightColor={lightColor}
-        />
-      )}
-      
-      {currentCarIndex === 2 && (
-        <MainCar3
-          position={[0, 0, -5]}
-          rotation={[0, -Math.PI / 2, 0]}
-          lightColor={lightColor}
-        />
-      )}
-      
+
+      <Suspense fallback={null}>
+        {currentCarIndex === 0 && (
+          <MainCar
+            position={[0, 0, -5]}
+            rotation={[0, -Math.PI / 2, 0]}
+            lightColor={lightColor}
+          />
+        )}
+        {currentCarIndex === 1 && (
+          <MainCar2
+            position={[0, 0, -5]}
+            rotation={[0, -Math.PI / 2, 0]}
+            lightColor={lightColor}
+          />
+        )}
+        {currentCarIndex === 2 && (
+          <MainCar3
+            position={[0, 0, -5]}
+            rotation={[0, -Math.PI / 2, 0]}
+            lightColor={lightColor}
+          />
+        )}
+      </Suspense>
+
+
       <group ref={groupRef}>
         {CITIES_CONFIG.map((city, index) => (
           <City key={index} scale={0.01} position={city.position} rotation={[0, 0, 0]} />
         ))}
       </group>
-      
+
       <OrbitControls
-    position={[0,0,10]}
+        position={[0, 0, 10]}
         target={[-3, 0, -5]}
         enablePan={false}
       />
-      <mesh position={[-3, 0, -5]}>
-        <sphereGeometry args={[0.5, 32, 32]} />
-        <meshStandardMaterial color="red" />
-      </mesh>
 
       {oppositeCars.map((car) => {
-        const CarComponent = { Car1, Car2, Car4, Car5 }[car.model];
+        const CarComponent = { Car1, Car2, Car3, Car4 }[car.model];
         return <CarComponent key={car.id} position={car.position} rotation={car.rotation} />;
       })}
     </>

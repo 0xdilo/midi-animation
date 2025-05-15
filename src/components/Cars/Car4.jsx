@@ -1,226 +1,30 @@
-import React from "react";
-import { useGLTF } from "@react-three/drei";
+import React from 'react'
+import { useGLTF } from '@react-three/drei'
 
 export default function Model(props) {
-  const { nodes, materials } = useGLTF("/cars/car4/scene.gltf");
+  const { nodes, materials } = useGLTF('/cars/car4/scene-transformed.glb')
   return (
-    <group {...props} dispose={null} scale={0.0014}>
-      <group rotation={[-Math.PI / 2, 0, 0]}>
-        <mesh
-          geometry={nodes.Material2.geometry}
-          material={materials.Rear_lamp}
-        />
-        <mesh
-          geometry={nodes.Material2_1.geometry}
-          material={materials.Silver_Paint}
-        />
-        <mesh
-          geometry={nodes.Material2_2.geometry}
-          material={materials["0137_Black"]}
-        />
-        <lineSegments
-          geometry={nodes.Material4.geometry}
-          material={materials.edge_color515151255}
-        />
-        <mesh
-          geometry={nodes.Material3.geometry}
-          material={materials.material_4}
-        />
-        <mesh
-          geometry={nodes.Material2_3.geometry}
-          material={materials.material_10}
-        />
-        <lineSegments
-          geometry={nodes.Material3_1.geometry}
-          material={materials.edge_color303030255}
-        />
-        <mesh
-          geometry={nodes.Material2_4.geometry}
-          material={materials.Color_008_1}
-        />
-        <mesh
-          geometry={nodes.Material3_2.geometry}
-          material={materials.material_28}
-        />
-        <mesh
-          geometry={nodes.Material2_5.geometry}
-          material={materials.material}
-        />
-        <lineSegments
-          geometry={nodes.Material3_3.geometry}
-          material={materials.edge_color222222255}
-        />
-        <mesh
-          geometry={nodes.Material2_6.geometry}
-          material={materials["0136_Charcoal_1"]}
-        />
-        <mesh
-          geometry={nodes.Material3_4.geometry}
-          material={materials.Color_002_2}
-        />
-        <mesh
-          geometry={nodes.Material2_7.geometry}
-          material={materials.Green}
-        />
-        <lineSegments
-          geometry={nodes.Material3_5.geometry}
-          material={materials.edge_color0890255}
-        />
-        <mesh
-          geometry={nodes.Material2_8.geometry}
-          material={materials["Light_Gray_-_Gris_Claro"]}
-        />
-        <lineSegments
-          geometry={nodes.Material3_6.geometry}
-          material={materials.edge_color16300255}
-        />
-        <lineSegments
-          geometry={nodes.Material4_1.geometry}
-          material={materials.edge_color1781080255}
-        />
-        <mesh
-          geometry={nodes.Material2_9.geometry}
-          material={materials.material_8}
-        />
-        <mesh
-          geometry={nodes.Material2_10.geometry}
-          material={materials.material_6}
-        />
-        <lineSegments
-          geometry={nodes.Material5.geometry}
-          material={materials.edge_color158158158255}
-        />
-        <mesh
-          geometry={nodes.Material3_7.geometry}
-          material={materials.material_25}
-        />
-        <mesh
-          geometry={nodes.Material2_11.geometry}
-          material={materials.Color_007}
-        />
-        <lineSegments
-          geometry={nodes.Material4_2.geometry}
-          material={materials.edge_color198198198255}
-        />
-        <mesh
-          geometry={nodes.Material2_12.geometry}
-          material={materials.Color_002}
-        />
-        <mesh
-          geometry={nodes.Material2_13.geometry}
-          material={materials.Color_003}
-        />
-        <lineSegments
-          geometry={nodes.Material4_3.geometry}
-          material={materials.edge_color21816532255}
-        />
-        <mesh
-          geometry={nodes.Material3_8.geometry}
-          material={materials["0045_Goldenrod"]}
-        />
-        <mesh
-          geometry={nodes.Material3_9.geometry}
-          material={materials.carbon}
-        />
-        <lineSegments
-          geometry={nodes.Material4_4.geometry}
-          material={materials.edge_color114114114255}
-        />
-        <mesh
-          geometry={nodes.Material3_10.geometry}
-          material={materials.Color_005}
-        />
-        <mesh
-          geometry={nodes.Material3_11.geometry}
-          material={materials.Color_000}
-        />
-        <lineSegments
-          geometry={nodes.Material3_12.geometry}
-          material={materials.edge_color255255255255}
-        />
-        <mesh
-          geometry={nodes.Material2_14.geometry}
-          material={materials.material_7}
-        />
-        <lineSegments
-          geometry={nodes.Material3_13.geometry}
-          material={materials.edge_color112112112255}
-        />
-        <mesh
-          geometry={nodes.Material3_14.geometry}
-          material={materials.material_1}
-        />
-        <lineSegments
-          geometry={nodes.Material4_5.geometry}
-          material={materials.edge_color223226221255}
-        />
-        <mesh
-          geometry={nodes.Material3_15.geometry}
-          material={materials.material_5}
-        />
-        <mesh
-          geometry={nodes.Material2_15.geometry}
-          material={materials["0104_MediumBlue"]}
-        />
-        <mesh
-          geometry={nodes.Material2_16.geometry}
-          material={materials.black}
-        />
-        <lineSegments
-          geometry={nodes.Material3_16.geometry}
-          material={materials.edge_color353535255}
-        />
-        <mesh
-          geometry={nodes.Material2_17.geometry}
-          material={materials.muf_1}
-        />
-        <mesh
-          geometry={nodes.Material2_18.geometry}
-          material={materials.muf_2}
-        />
-        <mesh
-          geometry={nodes.Material3_17.geometry}
-          material={materials.black2}
-        />
-        <mesh
-          geometry={nodes.Material2_19.geometry}
-          material={materials.muf_3}
-        />
-        <lineSegments
-          geometry={nodes.Material2_20.geometry}
-          material={materials.edge_color128128128255}
-        />
-        <lineSegments
-          geometry={nodes.Material2_21.geometry}
-          material={materials.edge_color000255}
-        />
-        <lineSegments
-          geometry={nodes.Material2_22.geometry}
-          material={materials.edge_color282828255}
-        />
-        <lineSegments
-          geometry={nodes.Material2_23.geometry}
-          material={materials.edge_color152658255}
-        />
-        <lineSegments
-          geometry={nodes.Material2_24.geometry}
-          material={materials.edge_color585858255}
-        />
-        <lineSegments
-          geometry={nodes.Material3_18.geometry}
-          material={materials.edge_color585858255}
-        />
-        <lineSegments
-          geometry={nodes.Material2_25.geometry}
-          material={materials.edge_color170170170255}
-        />
-        <lineSegments
-          geometry={nodes.Material3_19.geometry}
-          material={materials.edge_color170170170255}
-        />
-      </group>
+    <group {...props} dispose={null} scale={0.015}>
+      <mesh geometry={nodes.Body_Car_paint_0.geometry} material={materials.Car_paint} rotation={[-Math.PI / 2, Math.PI / 2, 0]} scale={52.949} />
+      <mesh geometry={nodes.Body_Rubber_0.geometry} material={materials.PaletteMaterial001} rotation={[-Math.PI / 2, Math.PI / 2, 0]} scale={52.949} />
+      <mesh geometry={nodes.Body_Glass_0.geometry} material={materials.Glass} rotation={[-Math.PI / 2, Math.PI / 2, 0]} scale={52.949} />
+      <mesh geometry={nodes.Body_Headlgt_Glass_0.geometry} material={materials.PaletteMaterial002} rotation={[-Math.PI / 2, Math.PI / 2, 0]} scale={52.949} />
+      <mesh geometry={nodes.Indicator_Front_indicators_front_0.geometry} material={materials.PaletteMaterial003} position={[0, 0, 166.651]} rotation={[-Math.PI / 2, Math.PI / 2, 0]} scale={52.949} />
+      <mesh geometry={nodes.taillights_redLgt_0.geometry} material={materials.PaletteMaterial004} position={[98.01, 58.664, -249.742]} scale={6.971} />
+      <mesh geometry={nodes.frontWheels_Wheel_Stock_0.geometry} material={materials.PaletteMaterial001} position={[117.638, 19.895, 167.954]} rotation={[-Math.PI / 2, Math.PI / 2, 0]} scale={[31.022, 31.022, 41.546]} />
+      <mesh geometry={nodes.frontTurbofan_Turbofan_0.geometry} material={materials.Turbofan} position={[119.462, 19.897, 167.954]} rotation={[-Math.PI / 2, Math.PI / 2, 0]} scale={[28.635, 28.635, 38.349]} />
+      <mesh geometry={nodes.frontTurbofan_TurbofanTexture_F_0.geometry} material={materials.TurbofanTexture_F} position={[119.462, 19.897, 167.954]} rotation={[-Math.PI / 2, Math.PI / 2, 0]} scale={[28.635, 28.635, 38.349]} />
+
+      <mesh geometry={nodes.Radiator_Radiator_0.geometry} material={materials.Radiator} position={[29.034, 20.307, 256.589]} rotation={[-1.403, 0, 0]} scale={[18.445, 3.908, 16.165]} />
+      <mesh geometry={nodes.FrontFenders_Fender_front_0.geometry} material={materials.Fender_front} position={[97.881, 65.655, 235.074]} rotation={[-Math.PI / 2, 0, 0]} scale={100} />
+      <mesh geometry={nodes.RearFenders_fender_rear_0.geometry} material={materials.fender_rear} position={[0, 0, 166.651]} rotation={[-Math.PI / 2, Math.PI / 2, 0]} scale={52.949} />
+      <mesh geometry={nodes.rearTurbofan_TurbofanTexture_R_0.geometry} material={materials.TurbofanTexture_R} position={[121.157, 22.021, -194.1]} rotation={[-Math.PI / 2, Math.PI / 2, 0]} scale={[29.984, 29.984, 40.156]} />
+      <mesh geometry={nodes.Tyre_r_Tyre_0.geometry} material={materials.Tyre} position={[89.897, 22.019, -194.1]} rotation={[Math.PI / 6, 0, 0]} scale={[28.08, 44.656, 51.608]} />
+
+      <mesh geometry={nodes.Plane_Shadow_0.geometry} material={materials.Shadow} position={[-6.891, 0, -13.671]} rotation={[-Math.PI / 2, 0, 0]} scale={[155.479, 317.274, 155.479]} />
     </group>
-  );
+  )
 }
 
-useGLTF.preload("/cars/car4/scene.gltf");
+useGLTF.preload('/cars/car4/scene-transformed.glb')
+
