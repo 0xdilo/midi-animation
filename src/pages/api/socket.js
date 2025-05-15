@@ -4,177 +4,247 @@ import fs from "fs";
 import path from "path";
 
 // Helper function to calculate MIDI ticks from milliseconds
-// This is an approximation - MIDI timing depends on tempo changes in the file
-function msToTicks(ms, bpm = 120) {
-  // MIDI files typically use 960 ticks per beat
-  const ticksPerBeat = 960;
-  const beatsPerSecond = bpm / 60;
-  const ticksPerSecond = ticksPerBeat * beatsPerSecond;
-  return Math.floor((ms / 1000) * ticksPerSecond);
+// Uses player's tempo and division for better accuracy if available
+function msToTicksAccurate(ms, player) {
+  if (
+    !player ||
+    typeof player.division !== "number" ||
+    typeof player.tempo !== "number" ||
+    player.tempo === 0
+  ) {
+    const defaultBpm = 120;
+    const defaultTicksPerBeat =
+      player && typeof player.division === "number" ? player.division : 960; // Common default
+    const beatsPerSecond = defaultBpm / 60;
+    const ticksPerSecond = defaultTicksPerBeat * beatsPerSecond;
+    console.warn(
+      `msToTicksAccurate: Player data not fully available or tempo is 0 (division: ${player?.division}, tempo: ${player?.tempo}). Using default BPM ${defaultBpm} and TPB ${defaultTicksPerBeat} for conversion. ms: ${ms}`,
+    );
+    return Math.floor((ms / 1000) * ticksPerSecond);
+  }
+  // player.tempo is microseconds per beat
+  // player.division is ticks per beat
+  const ticksPerMillisecond = (player.division * 1000) / player.tempo;
+  return Math.floor(ms * ticksPerMillisecond);
 }
 
-// Mapping of track names to file paths (for now, all point to the same file)
 const TRACKS = {
-  "Song 1": { midi: "public/traccia.mid", audio: "public/traccia.mp3" },
-  "Song 2": { midi: "public/traccia.mid", audio: "public/traccia.mp3" },
-  "Song 3": { midi: "public/traccia.mid", audio: "public/traccia.mp3" },
+  "Song 1": { midi: "public/traccia.mid", audio: "/traccia.mp3" }, // Ensure audio path is web-accessible
+  "Song 2": { midi: "public/traccia.mid", audio: "/traccia.mp3" },
+  "Song 3": { midi: "public/traccia.mid", audio: "/traccia.mp3" },
 };
 
 const ioHandler = (req, res) => {
   if (!res.socket.server.io) {
+    console.log("Initializing Socket.IO server...");
     const io = new Server(res.socket.server);
-    let currentPlayer = null; // Store current player instance
-    let lastPausedTick = 0;
-    let lastPausedTimeMs = 0;
-    let startTime = 0; // Track when playback started
+    let currentPlayer = null;
+    let lastPausedTickByTrack = {}; // Store last paused tick per track title
+    let lastPlayedTrackTitle = null; // Keep track of the song instance being controlled
+    let serverGlobalStartTime = 0; // Reference: Date.now() at client's 0ms playback point
+
+    const playTrackLogic = (socket, trackTitle, options = {}) => {
+      const clientReportedAudioTimeMs = options.resumeFrom || 0;
+
+      if (currentPlayer) {
+        currentPlayer.stop(); // Stop any existing player
+        console.log(
+          `[playTrackLogic] Stopped previous player for track: ${lastPlayedTrackTitle}`,
+        );
+      }
+
+      const trackInfo = TRACKS[trackTitle];
+      if (!trackInfo) {
+        console.error(`Track not found: ${trackTitle}`);
+        socket.emit("playbackError", {
+          error: `Track "${trackTitle}" not found.`,
+        });
+        return;
+      }
+      const midiFilePath = path.join(process.cwd(), trackInfo.midi);
+
+      try {
+        const midiFile = fs.readFileSync(midiFilePath);
+        currentPlayer = new MidiPlayer.Player();
+        currentPlayer.loadArrayBuffer(midiFile);
+
+        // Align server's time reference with the client's audio timeline
+        serverGlobalStartTime = Date.now() - clientReportedAudioTimeMs;
+        console.log(
+          `[playTrackLogic:"${trackTitle}"] Server event timeline anchored. Client audio at: ${clientReportedAudioTimeMs}ms. ServerGlobalStartTime: ${serverGlobalStartTime}`,
+        );
+
+        let effectiveResumeTicks = 0;
+
+        // Check if we are resuming the *exact same track instance* that was paused
+        if (
+          trackTitle === lastPlayedTrackTitle &&
+          lastPausedTickByTrack[trackTitle] !== undefined &&
+          clientReportedAudioTimeMs > 0 // And client is actually trying to resume
+        ) {
+          effectiveResumeTicks = lastPausedTickByTrack[trackTitle];
+          console.log(
+            `[playTrackLogic:"${trackTitle}"] Resuming MIDI using stored lastPausedTick: ${effectiveResumeTicks}.`,
+          );
+        } else if (clientReportedAudioTimeMs > 0) {
+          // Seeking to a specific time (could be a new play at offset, or resume without exact prior pause tick)
+          effectiveResumeTicks = msToTicksAccurate(
+            clientReportedAudioTimeMs,
+            currentPlayer, // Pass player for potentially better tick calculation
+          );
+          console.log(
+            `[playTrackLogic:"${trackTitle}"] Calculating MIDI seek to tick ~${effectiveResumeTicks} (from client's ${clientReportedAudioTimeMs}ms).`,
+          );
+          // If we are seeking, clear any old tick for this track as it might not correspond
+          delete lastPausedTickByTrack[trackTitle];
+        } else {
+          // Starting from the beginning
+          console.log(`[playTrackLogic:"${trackTitle}"] Starting MIDI from beginning.`);
+          delete lastPausedTickByTrack[trackTitle]; // Clear any old tick
+        }
+
+        // --- MODIFIED SEEKING LOGIC ---
+        const reportedTotalTicks = currentPlayer.getTotalTicks(); // Get it for logging
+        console.log(
+          `[playTrackLogic:"${trackTitle}"] Before seek. effectiveResumeTicks: ${effectiveResumeTicks}, Player reports totalTicks: ${reportedTotalTicks}`
+        );
+
+        if (effectiveResumeTicks > 0) {
+          console.log(
+            `[playTrackLogic:"${trackTitle}"] Attempting to skipToTick: ${effectiveResumeTicks}`
+          );
+          currentPlayer.skipToTick(effectiveResumeTicks);
+          // We are now relying on skipToTick to handle the value correctly,
+          // as the previous check against getTotalTicks() was failing due to it returning 0.
+        }
+        // --- END OF MODIFIED SEEKING LOGIC ---
+
+        lastPlayedTrackTitle = trackTitle; // Update the currently playing track title
+
+        let lastTickEmitTime = 0;
+        const tickEmitInterval = 100; // ms, throttle tick updates
+
+        currentPlayer.on("playing", (currentTickEvent) => {
+          const now = Date.now();
+          if (now - lastTickEmitTime > tickEmitInterval) {
+            lastTickEmitTime = now;
+            const eventTime = now - serverGlobalStartTime;
+            socket.emit("midiTick", {
+              tick: currentTickEvent.tick,
+              time: eventTime, // Timestamp relative to shared timeline
+            });
+          }
+        });
+
+        currentPlayer.on("midiEvent", (event) => {
+          if (event.name === "Note on" || event.name === "Note off") {
+            const eventTime = Date.now() - serverGlobalStartTime; // Use Date.now() for fresh timestamp
+            socket.emit("midiEvent", { ...event, time: eventTime });
+          }
+        });
+
+        currentPlayer.on("endOfFile", () => {
+          console.log(`[playTrackLogic:"${trackTitle}"] MIDI track ended.`);
+          socket.emit("trackEnded", { title: trackTitle });
+          if (currentPlayer) currentPlayer.stop(); // Ensure player is stopped
+          delete lastPausedTickByTrack[trackTitle];
+          // lastPlayedTrackTitle = null; // Or keep it to allow replaying the last track
+        });
+
+        currentPlayer.play(); // Play the MIDI
+
+        // Emit trackStarted AFTER play() has been called.
+        // The values for totalTicks and durationMs will be what the player reports at this stage.
+        const currentTotalTicks = currentPlayer.getTotalTicks();
+        const currentDurationMs = currentPlayer.getSongTime() * 1000;
+
+        socket.emit("trackStarted", {
+          title: trackTitle,
+          audio: trackInfo.audio,
+          resumedFrom: clientReportedAudioTimeMs, // Client uses this to sync its audio.currentTime and startTimeRef
+          totalTicks: currentTotalTicks,
+          durationMs: currentDurationMs,
+        });
+        console.log(
+          `[playTrackLogic:"${trackTitle}"] Playback command issued. Player's total ticks: ${currentTotalTicks}, Duration: ${currentDurationMs / 1000}s`,
+        );
+      } catch (error) {
+        console.error(`MIDI playback error for "${trackTitle}":`, error);
+        socket.emit("playbackError", {
+          error: `Failed to load or play MIDI for "${trackTitle}": ${error.message}`,
+        });
+      }
+    };
 
     io.on("connection", (socket) => {
-      // Get available tracks
+      console.log("Client connected:", socket.id);
+
       socket.on("getTracks", () => {
-        const trackList = Object.keys(TRACKS).map(name => ({
+        const trackList = Object.keys(TRACKS).map((name) => ({
           title: name,
-          audio: TRACKS[name].audio
+          audio: TRACKS[name].audio, // Client needs this to load the audio
         }));
         socket.emit("trackList", trackList);
       });
 
-      // Handle start playback for any track
       socket.on("playTrack", (trackTitle, options = {}) => {
-        const resumeFromMs = options.resumeFrom || 0;
-        const resumeTicks = msToTicks(resumeFromMs);
+        playTrackLogic(socket, trackTitle, options);
+      });
 
+      socket.on("stopTrack", () => {
+        if (currentPlayer && lastPlayedTrackTitle) {
+          // Check if player is actually playing to get a meaningful current tick for pause
+          if (currentPlayer.isPlaying()) {
+            const currentTick = currentPlayer.getCurrentTick();
+            // midi-player-js docs say getCurrentTick() returns a number.
+            if (typeof currentTick === "number") {
+              lastPausedTickByTrack[lastPlayedTrackTitle] = currentTick;
+              const serverElapsedMs = Date.now() - serverGlobalStartTime;
+              console.log(
+                `[stopTrack:"${lastPlayedTrackTitle}"] Paused. Stored lastPausedTick: ${currentTick} (Server elapsed: ${serverElapsedMs}ms).`,
+              );
+            } else {
+              console.warn(`[stopTrack:"${lastPlayedTrackTitle}"] getCurrentTick did not return a number:`, currentTick);
+            }
+          } else {
+            // If player was already stopped or finished, lastPausedTickByTrack might already be set or should be from endOfFile
+            console.log(`[stopTrack:"${lastPlayedTrackTitle}"] Player was not actively playing when stop was called. Using existing pause data if any.`);
+          }
+          currentPlayer.stop(); // Stop the player regardless
+          socket.emit("trackStopped", { title: lastPlayedTrackTitle }); // Inform client
+        } else {
+          console.log("[stopTrack] No player active or track title known to stop.");
+        }
+      });
+
+      // Legacy "start" event: map to playTrackLogic for "Song 1"
+      socket.on("start", (options = {}) => {
+        console.log(
+          "Legacy 'start' event received. Processing as 'playTrack' for 'Song 1'. Options:",
+          options,
+        );
+        playTrackLogic(socket, "Song 1", options);
+      });
+
+      socket.on("disconnect", () => {
+        console.log("Client disconnected:", socket.id);
         if (currentPlayer) {
           currentPlayer.stop();
+          currentPlayer = null; // Clear the player instance
         }
-
-        const trackInfo = TRACKS[trackTitle] || TRACKS["Song 1"];
-        const midiFilePath = path.join(process.cwd(), trackInfo.midi);
-
-        try {
-          const midiFile = fs.readFileSync(midiFilePath);
-          currentPlayer = new MidiPlayer.Player();
-          currentPlayer.loadArrayBuffer(midiFile);
-
-          startTime = Date.now() - resumeFromMs;
-          let effectiveResumeTicks = resumeTicks;
-
-          // If resuming from a pause and no new resumeFrom is provided, use last paused position
-          if (resumeFromMs === lastPausedTimeMs && lastPausedTick > 0) {
-            effectiveResumeTicks = lastPausedTick;
-            console.log(`Resuming from last paused tick ${effectiveResumeTicks} (time ${resumeFromMs}ms)`);
-          } else if (resumeFromMs > 0) {
-            console.log(`Resuming from provided time ${resumeFromMs}ms / ${resumeTicks} ticks`);
-          } else {
-            lastPausedTick = 0; // Reset if starting fresh
-            lastPausedTimeMs = 0;
-            console.log("Starting from beginning");
-          }
-
-          if (effectiveResumeTicks > 0) {
-            currentPlayer.skipToTick(effectiveResumeTicks);
-          }
-
-          let lastTickTime = 0;
-          currentPlayer.on("playing", (currentTick) => {
-            const now = Date.now();
-            if (now - lastTickTime > 100) {
-              lastTickTime = now;
-              const currentTime = now - startTime;
-              socket.emit("midiTick", { tick: currentTick, time: currentTime });
-            }
-          });
-
-          currentPlayer.on("midiEvent", (event) => {
-            if (event.name === "Note on" || event.name === "Note off") {
-              const currentTime = Date.now() - startTime;
-              socket.emit("midiEvent", { ...event, time: currentTime });
-            }
-          });
-
-          currentPlayer.play();
-          socket.emit("trackStarted", {
-            title: trackTitle,
-            audio: trackInfo.audio,
-            resumedFrom: resumeFromMs
-          });
-        } catch (error) {
-          console.error("MIDI playback error:", error);
-          socket.emit("playbackError", { error: "Failed to load MIDI file" });
-        }
-      });
-
-      // Handle stop command
-      socket.on("stopTrack", () => {
-        if (currentPlayer && currentPlayer.isPlaying()) {
-          lastPausedTick = currentPlayer.getCurrentTick(); // Store the current MIDI tick
-          lastPausedTimeMs = Date.now() - startTime; // Store the elapsed time in milliseconds
-          console.log(`Stopped at tick ${lastPausedTick}, time ${lastPausedTimeMs}ms`);
-          currentPlayer.stop();
-        }
-      });
-
-      // Legacy support for old "start" event
-      socket.on("start", (options = {}) => {
-        const resumeFromMs = options.resumeFrom || 0;
-        const resumeTicks = msToTicks(resumeFromMs);
-
-        socket.emit("trackStarted", {
-          title: "Song 1",
-          audio: TRACKS["Song 1"].audio,
-          resumedFrom: resumeFromMs
-        });
-
-        const midiFilePath = path.join(process.cwd(), TRACKS["Song 1"].midi);
-        try {
-          const midiFile = fs.readFileSync(midiFilePath);
-          currentPlayer = new MidiPlayer.Player();
-          currentPlayer.loadArrayBuffer(midiFile);
-
-          startTime = Date.now() - resumeFromMs;
-          let effectiveResumeTicks = resumeTicks;
-
-          if (resumeFromMs === lastPausedTimeMs && lastPausedTick > 0) {
-            effectiveResumeTicks = lastPausedTick;
-            console.log(`Resuming from last paused tick ${effectiveResumeTicks} (time ${resumeFromMs}ms)`);
-          } else if (resumeFromMs > 0) {
-            console.log(`Resuming from provided time ${resumeFromMs}ms / ${resumeTicks} ticks`);
-          } else {
-            lastPausedTick = 0;
-            lastPausedTimeMs = 0;
-            console.log("Starting from beginning");
-          }
-
-          if (effectiveResumeTicks > 0) {
-            currentPlayer.skipToTick(effectiveResumeTicks);
-          }
-
-          let lastTickTime = 0;
-          currentPlayer.on("playing", (currentTick) => {
-            const now = Date.now();
-            if (now - lastTickTime > 100) {
-              lastTickTime = now;
-              const currentTime = now - startTime;
-              socket.emit("midiTick", { tick: currentTick, time: currentTime });
-            }
-          });
-
-          currentPlayer.on("midiEvent", (event) => {
-            if (event.name === "Note on" || event.name === "Note off") {
-              const currentTime = Date.now() - startTime;
-              socket.emit("midiEvent", { ...event, time: currentTime });
-            }
-          });
-
-          currentPlayer.play();
-        } catch (error) {
-          console.error("MIDI playback error:", error);
-        }
+        // Reset state associated with this player instance if necessary
+        // For example, if a user disconnects, you might not want their lastPlayedTrackTitle to persist
+        // if another user connects with the same socket ID (unlikely with default Socket.IO behavior but good to consider).
+        // However, lastPausedTickByTrack is global and might be fine to keep for a short while.
+        // lastPlayedTrackTitle = null; // Consider if this should be reset
       });
     });
-
     res.socket.server.io = io;
+  } else {
+    console.log("Socket.IO server already running.");
   }
   res.end();
 };
 
 export default ioHandler;
+

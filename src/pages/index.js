@@ -1,105 +1,81 @@
 import { Canvas } from "@react-three/fiber";
 import { useMemo, useCallback, useEffect, useRef, useState } from "react";
 import io from "socket.io-client";
-import { Effects } from "../components/Effects";
-import { Scene } from "../components/Scene";
-import Menu from "../components/Menu"; // Import the new Menu component
+import { Effects } from "../components/Effects"; // Assuming these paths are correct
+import { Scene } from "../components/Scene";   // Assuming these paths are correct
+import Menu from "../components/Menu";         // Assuming this path is correct
 
 const colorPairs = [
-  { scene: "#FF1493", light: "#00EB6C" }, // Deep pink & Spring green
-  { scene: "#00FF7F", light: "#FF0080" }, // Spring green & Deep pink
-  { scene: "#FF4500", light: "#00BAFF" }, // Orange red & Deep sky blue
-  { scene: "#1E90FF", light: "#E16F00" }, // Dodger blue & Dark orange
-  { scene: "#FFD700", light: "#0028FF" }, // Gold & Blue
-  { scene: "#FF00FF", light: "#00FF00" }, // Magenta & Lime
-  { scene: "#00FFFF", light: "#FF0000" }, // Cyan & Red
-  { scene: "#9400D3", light: "#6BFF2C" }, // Dark violet & Lime green
+  { scene: "#FF1493", light: "#00EB6C" },
+  { scene: "#00FF7F", light: "#FF0080" },
+  { scene: "#FF4500", light: "#00BAFF" },
+  { scene: "#1E90FF", light: "#E16F00" },
+  { scene: "#FFD700", light: "#0028FF" },
+  { scene: "#FF00FF", light: "#00FF00" },
+  { scene: "#00FFFF", light: "#FF0000" },
+  { scene: "#9400D3", light: "#6BFF2C" },
 ];
 
-// Tracks data structure matching Menu.js album data
-const TRACKS = {
-  "Song 1": { audio: "/traccia.mp3" },
-  "Song 2": { audio: "/traccia.mp3" },
-  "Song 3": { audio: "/traccia.mp3" },
-};
+// This local TRACKS is mainly for the Menu structure if needed before server data.
+// The server will provide the definitive list with audio paths.
+const LOCAL_TRACK_TITLES = ["Song 1", "Song 2", "Song 3"];
+
 
 export default function Home() {
   const [socket, setSocket] = useState(null);
-  const [play, setPlay] = useState(false);
+  const [play, setPlay] = useState(false); // Renamed from isPlaying for consistency
+  const lastPausedPosition = useRef(null);
+
   const [instruments, setInstruments] = useState({
-    0: { value: 1 },
+    0: { value: 1 }, // Default state for instruments
     1: { value: 1 },
   });
-  const [lightColor, setLightColor] = useState("#ffffff");
+  const [lightColor, setLightColor] = useState({ scene: "#eeaf61", directional: "#ffffff" }); // Initial light colors
   const [menuOpen, setMenuOpen] = useState(false);
   const [currentCarIndex, setCurrentCarIndex] = useState(0);
-  const [currentSongIndex, setCurrentSongIndex] = useState(0);
+  const [currentSongIndex, setCurrentSongIndex] = useState(0); // Used by Effects
   const [isFirstStart, setIsFirstStart] = useState(true);
-  const [audioPausedTime, setAudioPausedTime] = useState(0);
+
+  // New state for track management from server
+  const [serverTracks, setServerTracks] = useState([]); // To store tracks from server {title, audio}
+  const [currentTrackTitle, setCurrentTrackTitle] = useState(null); // e.g., "Song 1"
 
   const audioRef = useRef(null);
-  const startTimeRef = useRef(null);
-  const lastPausedPosition = useRef(null);
-  const playingRef = useRef(false); // Ref to track play state for event handlers
+  const startTimeRef = useRef(0); // Date.now() at the moment audio playback logically started at 0ms for sync
+  const audioPausedTimeRef = useRef(0); // Stores audio.currentTime (in seconds) when paused
+  const timeoutsRef = useRef([]); // To store and clear MIDI event timeouts
 
-  // Update the playingRef whenever play state changes
+  // Ref to track play state for event handlers, avoiding stale closures
+  const playRef = useRef(play);
   useEffect(() => {
-    playingRef.current = play;
+    playRef.current = play;
   }, [play]);
 
-  // Socket initialization
+  const currentTrackTitleRef = useRef(currentTrackTitle);
   useEffect(() => {
-    console.log("Initializing socket connection...");
-    fetch("/api/socket");
-    const sock = io();
-    setSocket(sock);
+    currentTrackTitleRef.current = currentTrackTitle;
+  }, [currentTrackTitle]);
 
-    sock.on("connect", () => {
-      console.log("Socket Connected ✅");
-    });
 
-    sock.on("connect_error", (error) => {
-      console.error("Socket Connection Error ❌:", error);
-    });
+  const clearScheduledMidiEvents = () => {
+    timeoutsRef.current.forEach(clearTimeout);
+    timeoutsRef.current = [];
+    // Optionally reset visual cues tied to activeNotes if you use such a direct state
+    // setInstruments({ 0: { value: 1 }, 1: { value: 1 } }); // Reset instruments if needed on clear
+  };
 
-    sock.on("error", (error) => {
-      console.error("Socket Error ❌:", error);
-    });
-
-    sock.on("midiEvent", (event) => {
-      // Only process events if we're playing (using ref for closure issues)
-      if (playingRef.current) {
-        const currentTime = Date.now() - startTimeRef.current;
-        const delay = event.time - currentTime;
-
-        setTimeout(() => {
-          // Check again when the timeout fires in case play state changed
-          if (playingRef.current) {
-            handleMidiEvent(event);
-          }
-        }, Math.max(0, delay));
-      }
-    });
-
-    return () => {
-      if (sock) sock.disconnect();
-      if (audioRef.current) {
-        audioRef.current.pause();
-      }
-    };
-  }, []);
-
-  // MIDI event handler
-  const handleMidiEvent = (event) => {
-    console.log("🎹 MIDI Event:", {
+  // MIDI event handler (your original logic for visuals)
+  const handleMidiEventVisuals = (event) => {
+    // This is your original logic for updating instruments and lightColor
+    console.log("🎨 Applying MIDI Event to Visuals:", {
       data: event,
       timestamp: new Date().toISOString(),
     });
 
-    const track = event.track % 2;
+    const track = event.track % 2; // Assuming 2 tracks for visuals
     const isNoteOn = event.name === "Note on";
-    const intensity = isNoteOn ? event.velocity / 127 : 0; // Normalize velocity (0-127) to 0-1
-    const shakeTrigger = isNoteOn && track === 1; // Trigger shake for track 1 "Note on"
+    const intensity = isNoteOn ? event.velocity / 127 : 0;
+    const shakeTrigger = isNoteOn && track === 1;
 
     if (isNoteOn && track === 0) {
       const randomPair = colorPairs[Math.floor(Math.random() * colorPairs.length)];
@@ -115,57 +91,235 @@ export default function Home() {
       [track]: {
         value: isNoteOn ? 2 : 1,
         noteOn: isNoteOn,
-        intensity: track === 1 ? intensity : 0, // Intensity for particles on track 1
-        shakeTrigger: track === 1 ? shakeTrigger : false, // Shake for track 1
+        intensity: track === 1 ? intensity : 0,
+        shakeTrigger: track === 1 ? shakeTrigger : false,
       },
     }));
   };
 
-  // Start button handler
-  const handleStart = useCallback(() => {
-    console.log("🎮 Start Button Clicked");
 
-    if (!socket?.connected) {
-      console.error("❌ Socket not connected! Current socket state:", {
-        socket: socket,
-        connected: socket?.connected,
+  // Socket initialization and event listeners
+  useEffect(() => {
+    // CRITICAL: Ping the API route to initialize the Socket.IO server
+    fetch("/api/socket").then(() => {
+      const sock = io();
+      setSocket(sock);
+
+      sock.on("connect", () => {
+        console.log("Socket Connected ✅");
+        sock.emit("getTracks"); // Get available tracks from server
       });
+
+      sock.on("trackList", (trackList) => {
+        console.log("Received track list:", trackList);
+        setServerTracks(trackList);
+        // If no track is selected yet, and we have tracks, maybe select the first one
+        // but don't auto-play. The Menu component will use serverTracks.
+      });
+
+      sock.on("trackStarted", (data) => {
+        console.log("🎬 Event: trackStarted", data);
+        if (!audioRef.current) {
+          console.error("Audio element not ready for trackStarted");
+          return;
+        }
+        clearScheduledMidiEvents();
+        setCurrentTrackTitle(data.title);
+
+        const trackIndex = LOCAL_TRACK_TITLES.indexOf(data.title);
+        if (trackIndex !== -1) {
+          setCurrentCarIndex(trackIndex); // For Scene component
+          setCurrentSongIndex(trackIndex); // For Effects component
+        }
+
+        // Ensure audio source is correct
+        const expectedAudioSrc = window.location.origin + data.audio;
+        if (audioRef.current.src !== expectedAudioSrc) {
+          audioRef.current.src = data.audio; // Server provides web-accessible path
+        }
+
+        const resumeFromMs = data.resumedFrom || 0;
+        audioRef.current.currentTime = resumeFromMs / 1000;
+        startTimeRef.current = Date.now() - resumeFromMs; // Anchor point for event timing
+
+        audioRef.current.play()
+          .then(() => {
+            setPlay(true);
+            setIsFirstStart(false); // No longer the very first start
+            audioPausedTimeRef.current = 0; // Reset paused time as we are playing
+            console.log(
+              `🎵 Audio playing '${data.title}'. Set currentTime to ${resumeFromMs / 1000}s. startTimeRef: ${startTimeRef.current}`,
+            );
+          })
+          .catch((error) => {
+            console.error("Audio playback error on trackStarted:", error);
+            setPlay(false);
+          });
+      });
+
+      sock.on("trackStopped", (data) => {
+        console.log("🎬 Event: trackStopped", data);
+        if (playRef.current && data.title === currentTrackTitleRef.current) {
+          if (audioRef.current) {
+            // audioRef.current.pause(); // Client pause action should handle this
+            // audioPausedTimeRef.current is set by the client's explicit pause action
+          }
+          setPlay(false);
+          clearScheduledMidiEvents(); // Stop any pending visual events
+          console.log("Client acknowledged track stop.");
+        }
+      });
+
+      sock.on("trackEnded", (data) => {
+        console.log("🎬 Event: trackEnded", data.title);
+        if (data.title === currentTrackTitleRef.current) {
+          setPlay(false);
+          clearScheduledMidiEvents();
+          if (audioRef.current) {
+            audioRef.current.currentTime = 0;
+          }
+          audioPausedTimeRef.current = 0;
+          // Optionally reset instruments to default visual state
+          setInstruments({ 0: { value: 1 }, 1: { value: 1 } });
+        }
+      });
+
+      sock.on("midiEvent", (event) => {
+        if (!playRef.current && event.name === "Note on") {
+          return; // Don't process if not playing
+        }
+        const clientNow = Date.now();
+        const elapsedTimeOnClientTimeline = clientNow - startTimeRef.current;
+        const delay = event.time - elapsedTimeOnClientTimeline;
+
+        if (delay < -500) { // Event is too old, likely from before a seek/pause
+          // console.warn(`Skipping very late MIDI event: ${event.name} ${event.noteNumber}. Delay: ${delay.toFixed(0)}ms`);
+          return;
+        }
+
+        const timeoutId = setTimeout(() => {
+          if (playRef.current) { // Double check play state when timeout fires
+            handleMidiEventVisuals(event); // Your original visual handler
+          }
+        }, Math.max(0, delay));
+        timeoutsRef.current.push(timeoutId);
+      });
+
+      // midiTick can be used for progress bars or other non-critical UI updates
+      // socket.on("midiTick", (data) => { /* ... */ });
+
+
+      sock.on("playbackError", (data) => {
+        console.error("Socket Playback Error ❌:", data.error);
+        alert(`Playback Error: ${data.error}`);
+        setPlay(false);
+      });
+
+      sock.on("connect_error", (error) => {
+        console.error("Socket Connection Error ❌:", error);
+      });
+      sock.on("error", (error) => {
+        console.error("Socket Error ❌:", error);
+      });
+
+    }).catch(err => {
+      console.error("Failed to fetch /api/socket to initialize:", err);
+    });
+
+
+    return () => {
+      clearScheduledMidiEvents();
+      if (socket) socket.disconnect();
+      if (audioRef.current) {
+        audioRef.current.pause();
+        // audioRef.current.src = ""; // Optional: clear src on unmount
+      }
+    };
+  }, []); // Empty dependency array: runs once on mount
+
+  // Initial "PRESS START BUTTON" handler
+  const handleFirstStart = useCallback(() => {
+    if (!socket?.connected) {
+      console.error("❌ Socket not connected for handleFirstStart!");
+      return;
+    }
+    if (serverTracks.length === 0) {
+      alert("Tracks not loaded yet. Please wait.");
       return;
     }
 
+    const firstTrackTitle = LOCAL_TRACK_TITLES[0] || "Song 1"; // Fallback
+    const trackToPlay = serverTracks.find(t => t.title === firstTrackTitle) || serverTracks[0];
+
+    if (!trackToPlay) {
+      alert("No tracks available to play.");
+      return;
+    }
+
+    console.log(`🎮 First Start: Playing '${trackToPlay.title}'`);
+
     if (!audioRef.current) {
-      audioRef.current = new Audio("/traccia.mp3");
+      audioRef.current = new Audio(); // Create audio element if not exists
       audioRef.current.volume = 0.8;
     }
+    // The 'trackStarted' event will handle setting src, currentTime, and playing.
+    setCurrentTrackTitle(trackToPlay.title); // Set current track
+    audioPausedTimeRef.current = 0; // Ensure starting from beginning
+    socket.emit("playTrack", trackToPlay.title, { resumeFrom: 0 });
+    // setPlay(true) and setIsFirstStart(false) will be handled by 'trackStarted'
+  }, [socket, serverTracks]);
 
-    if (audioPausedTime > 0) {
-      const timeOffsetMs = audioPausedTime * 1000;
-      startTimeRef.current = Date.now() - timeOffsetMs;
-      audioRef.current.currentTime = audioPausedTime;
-      console.log("🚀 Emitting start event with resume position:", { timeOffsetMs });
-      socket.emit("start", { resumeFrom: timeOffsetMs });
-    } else {
-      console.log("🚀 Emitting initial start event");
-      startTimeRef.current = Date.now();
-      audioRef.current.currentTime = 0; // Ensure fresh start resets to 0
-      setAudioPausedTime(0); // Reset paused time
-      socket.emit("start");
-    }
 
-    audioRef.current.play()
-      .then(() => {
-        console.log("🎵 Audio started");
-        setPlay(true);
-        setIsFirstStart(false);
-      })
-      .catch((error) => {
-        console.error("Audio playback error:", error);
-        setPlay(false);
-      });
-  }, [socket, audioPausedTime]);
+  // --- Menu Actions ---
+  const menuAudioControls = {
+    isPlaying: play,
+    onPlay: (trackTitle) => { // Resume or play selected track
+      if (!socket?.connected) return;
+      if (!audioRef.current) audioRef.current = new Audio();
+      audioRef.current.volume = 0.8;
+
+      const resumeTimeMs = (currentTrackTitleRef.current === trackTitle && audioPausedTimeRef.current > 0)
+        ? audioPausedTimeRef.current * 1000
+        : 0; // If different track, or no pause time, start from 0
+
+      console.log(`MENU: Play/Resume '${trackTitle}' from ${resumeTimeMs}ms`);
+      setCurrentTrackTitle(trackTitle); // Update the current track
+      socket.emit("playTrack", trackTitle, { resumeFrom: resumeTimeMs });
+    },
+    onStop: () => { // Pause current track
+      if (!socket?.connected || !currentTrackTitleRef.current) return;
+      console.log(`MENU: Stop '${currentTrackTitleRef.current}'`);
+      socket.emit("stopTrack");
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioPausedTimeRef.current = audioRef.current.currentTime;
+        console.log(`Audio paused at: ${audioPausedTimeRef.current}s`);
+      }
+      setPlay(false); // Update UI immediately
+      clearScheduledMidiEvents();
+    },
+    onSkip: (nextTrackTitle) => { // Play next track from beginning
+      if (!socket?.connected) return;
+      if (!audioRef.current) audioRef.current = new Audio();
+      console.log(`MENU: Skip to '${nextTrackTitle}'`);
+      setCurrentTrackTitle(nextTrackTitle);
+      audioPausedTimeRef.current = 0; // Reset pause time for new track
+      socket.emit("playTrack", nextTrackTitle, { resumeFrom: 0 });
+    },
+    onPrevious: (prevTrackTitle) => { // Play previous track from beginning
+      if (!socket?.connected) return;
+      if (!audioRef.current) audioRef.current = new Audio();
+      console.log(`MENU: Previous to '${prevTrackTitle}'`);
+      setCurrentTrackTitle(prevTrackTitle);
+      audioPausedTimeRef.current = 0;
+      socket.emit("playTrack", prevTrackTitle, { resumeFrom: 0 });
+    },
+  };
+
 
   return (
     <div style={{ width: "100vw", height: "100vh", position: "relative" }}>
+      <audio ref={audioRef} /> {/* Global audio element */}
       {/* Grid Overlay */}
       <div
         style={{
@@ -233,71 +387,14 @@ export default function Home() {
       <Menu
         menuOpen={menuOpen}
         setMenuOpen={setMenuOpen}
-        audioControls={{
-          isPlaying: play,
-          onPlay: (trackTitle) => {
-            if (!socket?.connected) return;
-
-            if (!audioRef.current) {
-              audioRef.current = new Audio(TRACKS[trackTitle].audio);
-            }
-            audioRef.current.volume = 0.8;
-
-            const timeOffsetMs = audioPausedTime * 1000;
-            console.log(`Resuming from ${audioPausedTime} seconds / ${timeOffsetMs}ms`);
-
-            audioRef.current.currentTime = audioPausedTime;
-            startTimeRef.current = Date.now() - timeOffsetMs;
-            socket.emit("playTrack", trackTitle, { resumeFrom: timeOffsetMs });
-
-            audioRef.current.play()
-              .then(() => {
-                setPlay(true);
-                setIsFirstStart(false);
-              })
-              .catch((err) => {
-                console.error("Error resuming audio:", err);
-              });
-
-            const index = ["Song 1", "Song 2", "Song 3"].indexOf(trackTitle);
-            setCurrentCarIndex(index);
-            setCurrentSongIndex(index);
-          },
-          onStop: () => {
-            if (audioRef.current) {
-              const currentTime = audioRef.current.currentTime;
-              setAudioPausedTime(currentTime);
-              console.log(`Paused at time: ${currentTime} seconds`);
-              audioRef.current.pause();
-            }
-            socket.emit("stopTrack");
-            setPlay(false);
-          },
-          onSkip: (trackTitle) => {
-            socket.emit("playTrack", trackTitle);
-            audioRef.current.src = TRACKS[trackTitle].audio;
-            audioRef.current.currentTime = 0;
-            setAudioPausedTime(0);
-            audioRef.current.play();
-            const index = ["Song 1", "Song 2", "Song 3"].indexOf(trackTitle);
-            setCurrentCarIndex(index);
-            setCurrentSongIndex(index);
-          },
-          onPrevious: (trackTitle) => {
-            socket.emit("playTrack", trackTitle);
-            audioRef.current.src = TRACKS[trackTitle].audio;
-            audioRef.current.currentTime = 0;
-            setAudioPausedTime(0);
-            audioRef.current.play();
-            const index = ["Song 1", "Song 2", "Song 3"].indexOf(trackTitle);
-            setCurrentCarIndex(index);
-            setCurrentSongIndex(index);
-          },
-        }}
+        audioControls={menuAudioControls}
+        // Pass serverTracks to Menu for dynamic track listing
+        // The Menu component will need to be adapted to use this prop if it's not already
+        albumData={serverTracks.map(track => ({ title: track.title, audioSrc: track.audio }))}
+        currentTrackTitle={currentTrackTitle}
       />
 
       {/* Start Screen */}
-      {/* todo fix */}
       {!play && isFirstStart && (
         <div
           style={{
@@ -310,7 +407,7 @@ export default function Home() {
             flexDirection: "column",
             alignItems: "center",
             justifyContent: "center",
-            zIndex: 20,
+            zIndex: 20, // Ensure it's above canvas but below menu if menu can open
           }}
         >
           <div
@@ -319,7 +416,7 @@ export default function Home() {
               textAlign: "center",
               cursor: "pointer",
             }}
-            onClick={handleStart}
+            onClick={handleFirstStart} // Use the new handler
           >
             <h1
               style={{
@@ -366,7 +463,7 @@ export default function Home() {
           100% { opacity: 1; }
         }
 
-        @keyframes menuSlide {
+        @keyframes menuSlide { /* Ensure your Menu component uses this or similar */
           from { transform: translateY(100%); }
           to { transform: translateY(0); }
         }
@@ -374,6 +471,7 @@ export default function Home() {
         body {
           margin: 0;
           overflow: hidden;
+          background-color: #000; /* Fallback background for canvas area */
         }
 
         * {
@@ -391,18 +489,19 @@ export default function Home() {
         style={{
           background: `url('/sunset.jpg') no-repeat center center`,
           backgroundSize: "cover",
+          // visibility: play || !isFirstStart ? 'visible' : 'hidden' // Optionally hide canvas until first play
         }}
         gl={{
           powerPreference: "high-performance",
-          antialias: false,
-          stencil: false,
-          depth: false,
+          antialias: false, // Kept from original
+          stencil: false,   // Kept from original
+          depth: false,     // Kept from original
         }}
       >
         <directionalLight
           position={[-50, 20, 50]}
           intensity={2.5}
-          color={lightColor.scene || "#eeaf61"}
+          color={lightColor.scene || "#eeaf61"} // Use state for color
           castShadow
           shadow-mapSize-width={2048}
           shadow-mapSize-height={2048}
@@ -413,15 +512,16 @@ export default function Home() {
           shadow-camera-bottom={-50}
         />
         <Scene
-          instruments={instruments}
-          lightColor={lightColor.directional}
-          setLightColor={setLightColor}
-          play={play}
-          currentCarIndex={currentCarIndex}
-          lastPausedPosition={lastPausedPosition}
+          instruments={instruments} // Pass instruments state
+          lightColor={lightColor.directional} // Pass directional light color from state
+          // setLightColor={setLightColor} // setLightColor is handled by MIDI event now
+          play={play} // Pass play state
+          currentCarIndex={currentCarIndex} // Pass car index
+          lastPausedPosition={lastPausedPosition} // This ref seems unused in original Scene, review if needed
         />
-        <Effects currentSongIndex={currentSongIndex} />
+        <Effects currentSongIndex={currentSongIndex} /> {/* Pass song index */}
       </Canvas>
     </div>
   );
 }
+
