@@ -37,11 +37,19 @@ const cartoonShader = {
 
 
 const neonWireframeShader = {
+
+
   uniforms: {
     tDiffuse: { value: null },
-    glowColor: { value: new THREE.Vector3(0, 1, 1) }, // Cyan neon glow
-    wireframeThreshold: { value: 0.05 },
-    glowIntensity: { value: 3.0 },
+    gbResolution: { value: new THREE.Vector2(160, 144) },
+    palette: {
+      value: [
+        0.73, 0.88, 0.59, // lightest
+        0.51, 0.69, 0.36, // light
+        0.31, 0.48, 0.21, // dark
+        0.15, 0.28, 0.13  // darkest
+      ]
+    }
   },
   vertexShader: `
     varying vec2 vUv;
@@ -52,30 +60,34 @@ const neonWireframeShader = {
   `,
   fragmentShader: `
     uniform sampler2D tDiffuse;
-    uniform vec3 glowColor;
-    uniform float wireframeThreshold;
-    uniform float glowIntensity;
+    uniform vec2 gbResolution;
+    uniform float palette[12];
     varying vec2 vUv;
 
+    vec3 getGBColor(float v) {
+      if (v > 0.75) return vec3(palette[0], palette[1], palette[2]);
+      else if (v > 0.5) return vec3(palette[3], palette[4], palette[5]);
+      else if (v > 0.25) return vec3(palette[6], palette[7], palette[8]);
+      else return vec3(palette[9], palette[10], palette[11]);
+    }
+
     void main() {
-      vec4 color = texture2D(tDiffuse, vUv);
-      vec2 texel = vec2(1.0 / 1920.0, 1.0 / 1080.0);
+      // Downscale to Game Boy resolution, then upscale
+      vec2 gbUV = floor(vUv * gbResolution) / gbResolution;
+      vec4 color = texture2D(tDiffuse, gbUV);
 
-      vec4 left = texture2D(tDiffuse, vUv - vec2(texel.x, 0.0));
-      vec4 right = texture2D(tDiffuse, vUv + vec2(texel.x, 0.0));
-      vec4 up = texture2D(tDiffuse, vUv + vec2(0.0, texel.y));
-      vec4 down = texture2D(tDiffuse, vUv - vec2(0.0, texel.y));
+      // Auto-contrast: remap luminance to [0,1]
+      float minLum = 0.01; // tweak for your scene
+      float maxLum = 0.05; // tweak for your scene
+      float lum = (color.r + color.g + color.b) / 3.0;
+      lum = clamp((lum - minLum) / (maxLum - minLum), 0.0, 1.0);
 
-      float edge = length(color.rgb - left.rgb) + length(color.rgb - right.rgb) +
-                   length(color.rgb - up.rgb) + length(color.rgb - down.rgb);
-      float wireframe = step(wireframeThreshold, edge);
+      vec3 gbColor = getGBColor(lum);
 
-      vec3 finalColor = mix(color.rgb, glowColor * glowIntensity, wireframe);
-      gl_FragColor = vec4(finalColor, 1.0);
+      gl_FragColor = vec4(gbColor, 1.0);
     }
   `,
 };
-
 
 
 export function Effects({ currentSongIndex }) {
@@ -107,6 +119,7 @@ export function Effects({ currentSongIndex }) {
       effectComposer.addPass(cartoonPass);
     } else if (currentSongIndex === 2) {
       const wireframePass = new ShaderPass(neonWireframeShader);
+      wireframePass.uniforms.gbResolution.value.set(160, 144);
       effectComposer.addPass(wireframePass);
     }
 
