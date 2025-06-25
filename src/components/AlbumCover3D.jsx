@@ -1,28 +1,89 @@
 import { useFrame } from "@react-three/fiber";
-import { Image } from "@react-three/drei";
-import { useRef, useState } from "react";
+import { useRef } from "react";
+import { TextureLoader } from "three";
 
-export default function AlbumCover3D({ onClick }) {
+export default function AlbumCover3D() {
   const ref = useRef();
-  const [isClicked, setIsClicked] = useState(false);
+  const isDragging = useRef(false);
+  const previousMousePosition = useRef({ x: 0, y: 0 });
+  const rotation = useRef({ x: 0, y: 0 });
+  const velocity = useRef({ x: 0, y: 0 });
+
+  const loader = new TextureLoader();
+  const texture = loader.load("/00-COVER.jpeg");
+
+  const handlePointerDown = (event) => {
+    isDragging.current = true;
+    velocity.current = { x: 0, y: 0 };
+    previousMousePosition.current = {
+      x: event.clientX || (event.touches && event.touches[0].clientX),
+      y: event.clientY || (event.touches && event.touches[0].clientY),
+    };
+  };
+
+  const handlePointerMove = (event) => {
+    if (!isDragging.current) return;
+
+    const currentX =
+      event.clientX || (event.touches && event.touches[0].clientX);
+    const currentY =
+      event.clientY || (event.touches && event.touches[0].clientY);
+
+    const deltaX = currentX - previousMousePosition.current.x;
+    const deltaY = currentY - previousMousePosition.current.y;
+
+    // Normalize rotation to 0-2π range
+    const normalizedRotX =
+      ((rotation.current.x % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+
+    // Check if we're in the "flipped" range (between π/2 and 3π/2)
+    const isFlipped =
+      normalizedRotX > Math.PI / 2 && normalizedRotX < (3 * Math.PI) / 2;
+
+    velocity.current.x = deltaY * 0.01;
+    velocity.current.y = deltaX * 0.01 * (isFlipped ? -1 : 1);
+
+    rotation.current.y += velocity.current.y;
+    rotation.current.x += velocity.current.x;
+
+    previousMousePosition.current = { x: currentX, y: currentY };
+  };
+
+  const handlePointerUp = () => {
+    isDragging.current = false;
+  };
 
   useFrame((state, delta) => {
     if (ref.current) {
-      ref.current.rotation.y += delta * 0.5;
+      if (!isDragging.current) {
+        // Apply inertia
+        velocity.current.x *= 0.95;
+        velocity.current.y *= 0.95;
+
+        // Add eternal rotation
+        const eternalRotation = delta * 0.5;
+
+        // Apply inertia rotation
+        rotation.current.x += velocity.current.x;
+        rotation.current.y += velocity.current.y + eternalRotation;
+      }
+      ref.current.rotation.x = rotation.current.x;
+      ref.current.rotation.y = rotation.current.y;
       ref.current.position.y = Math.sin(state.clock.elapsedTime) * 0.2;
     }
   });
 
-  const handleClick = () => {
-    setIsClicked(true);
-    onClick();
-  };
-
   return (
-    <group ref={ref} onClick={handleClick}>
-      <Image url="/00-COVER.jpeg" scale={[2, 2, 2]} transparent opacity={0.99} />
-      <Image url="/00-COVER.jpeg" scale={[2, 2, 2]} rotation-y={Math.PI} transparent opacity={0.99} />
+    <group ref={ref}>
+      <mesh
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerLeave={handlePointerUp}
+      >
+        <boxGeometry args={[4, 4, 0.05]} />
+        <meshBasicMaterial map={texture} transparent opacity={0.99} />
+      </mesh>
     </group>
   );
 }
-

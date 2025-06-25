@@ -50,7 +50,7 @@ export default function Home() {
   const lastPausedPosition = useRef(null);
   const currentSongIndexRef = useRef(currentSongIndex);
 
-  // --- Effects: Keep refs in sync with state ---
+  // --- Sync refs with state ---
   useEffect(() => {
     playRef.current = play;
   }, [play]);
@@ -61,26 +61,24 @@ export default function Home() {
     currentSongIndexRef.current = currentSongIndex;
   }, [currentSongIndex]);
 
-  // --- Effect: Update car/song index when track or track list changes ---
+  // --- Update car/song index when track list changes ---
   useEffect(() => {
     if (currentTrackTitle && serverTracks.length > 0) {
-      const trackIndex = serverTracks.findIndex(
-        (t) => t.title === currentTrackTitle
-      );
-      if (trackIndex !== -1) {
-        if (currentCarIndex !== trackIndex) setCurrentCarIndex(trackIndex);
-        if (currentSongIndex !== trackIndex) setCurrentSongIndex(trackIndex);
+      const idx = serverTracks.findIndex((t) => t.title === currentTrackTitle);
+      if (idx !== -1) {
+        if (currentCarIndex !== idx) setCurrentCarIndex(idx);
+        if (currentSongIndex !== idx) setCurrentSongIndex(idx);
       }
     }
   }, [currentTrackTitle, serverTracks]);
 
-  // --- Utility: Clear scheduled MIDI events ---
+  // --- Clear scheduled MIDI events ---
   const clearScheduledMidiEvents = useCallback(() => {
     timeoutsRef.current.forEach(clearTimeout);
     timeoutsRef.current = [];
   }, []);
 
-  // --- MIDI Event Visuals Handler ---
+  // --- Handle MIDI event visuals ---
   const handleMidiEventVisuals = useCallback((event) => {
     const track = event.track > 1 ? 1 : event.track;
     const isNoteOn = event.name === "Note on";
@@ -88,19 +86,15 @@ export default function Home() {
     const shakeTrigger = isNoteOn && track === 1;
 
     if (isNoteOn && track === 0) {
-      const randomPair =
-        colorPairs[Math.floor(Math.random() * colorPairs.length)];
-      setLightColor({
-        scene: randomPair.scene,
-        directional: randomPair.light,
-      });
+      const pair = colorPairs[Math.floor(Math.random() * colorPairs.length)];
+      setLightColor({ scene: pair.scene, directional: pair.light });
     }
 
     if (isNoteOn && currentSongIndexRef.current % 5 === 2) {
-        const hue = (event.noteNumber * 10) % 360;
-        setShaderColor(`hsl(${hue}, 100%, 50%)`);
+      const hue = (event.noteNumber * 10) % 360;
+      setShaderColor(`hsl(${hue},100%,50%)`);
     } else {
-        setShaderColor("rgb(255, 255, 255)");
+      setShaderColor("rgb(255, 255, 255)");
     }
 
     setInstruments((prev) => ({
@@ -114,9 +108,9 @@ export default function Home() {
     }));
   }, []);
 
-  // --- Effect: Socket connection and event handlers ---
+  // --- Socket connection & handlers ---
   useEffect(() => {
-    fetch("/api/socket"); // Pre-warm the serverless function
+    fetch("/api/socket"); // pre-warm
 
     const sock = io();
     setSocket(sock);
@@ -125,24 +119,21 @@ export default function Home() {
       sock.emit("getTracks");
     });
 
-    sock.on("trackList", (trackList) => {
-      setServerTracks(trackList);
+    sock.on("trackList", (list) => {
+      setServerTracks(list);
     });
 
     sock.on("trackStarted", (data) => {
       if (!audioRef.current) return;
       clearScheduledMidiEvents();
       setCurrentTrackTitle(data.title);
-
-      const expectedAudioSrc = window.location.origin + data.audio;
-      if (audioRef.current.src !== expectedAudioSrc) {
+      const src = window.location.origin + data.audio;
+      if (audioRef.current.src !== src) {
         audioRef.current.src = data.audio;
       }
-
-      const resumeFromMs = data.resumedFrom || 0;
-      audioRef.current.currentTime = resumeFromMs / 1000;
-      startTimeRef.current = Date.now() - resumeFromMs;
-
+      const resumeMs = data.resumedFrom || 0;
+      audioRef.current.currentTime = resumeMs / 1000;
+      startTimeRef.current = Date.now() - resumeMs;
       audioRef.current
         .play()
         .then(() => {
@@ -156,10 +147,7 @@ export default function Home() {
     });
 
     sock.on("trackStopped", (data) => {
-      if (
-        playRef.current &&
-        data.title === currentTrackTitleRef.current
-      ) {
+      if (playRef.current && data.title === currentTrackTitleRef.current) {
         setPlay(false);
         clearScheduledMidiEvents();
       }
@@ -177,27 +165,25 @@ export default function Home() {
       }
     });
 
-    const midiEventHandler = (event) => {
-        if (!playRef.current && event.name === "Note on") return;
-        const clientNow = Date.now();
-        const elapsedTimeOnClientTimeline =
-          clientNow - startTimeRef.current;
-        const delay = event.time - elapsedTimeOnClientTimeline;
+    const midiHandler = (event) => {
+      if (!playRef.current && event.name === "Note on") return;
+      const now = Date.now();
+      const elapsed = now - startTimeRef.current;
+      const delay = event.time - elapsed;
+      if (delay < -500) return;
+      const id = setTimeout(
+        () => {
+          if (playRef.current) handleMidiEventVisuals(event);
+        },
+        Math.max(0, delay),
+      );
+      timeoutsRef.current.push(id);
+    };
 
-        if (delay < -500) return;
-
-        const timeoutId = setTimeout(() => {
-          if (playRef.current) {
-            handleMidiEventVisuals(event);
-          }
-        }, Math.max(0, delay));
-        timeoutsRef.current.push(timeoutId);
-    }
-
-    sock.on("midiEvent", midiEventHandler);
+    sock.on("midiEvent", midiHandler);
 
     return () => {
-      sock.off("midiEvent", midiEventHandler);
+      sock.off("midiEvent", midiHandler);
       sock.disconnect();
       clearScheduledMidiEvents();
       if (audioRef.current) {
@@ -207,19 +193,19 @@ export default function Home() {
     };
   }, [clearScheduledMidiEvents, handleMidiEventVisuals]);
 
-  // --- First Start Handler ---
+  // --- First start (play initial track) ---
   const handleFirstStart = useCallback(() => {
     if (!socket?.connected) {
-        alert("Connecting... please wait a moment and try again.");
-        return;
+      alert("Connecting... please wait a moment.");
+      return;
     }
     if (serverTracks.length === 0) {
       alert("Tracks not loaded yet. Please wait.");
       return;
     }
-    const trackToPlay = serverTracks[0];
-    if (!trackToPlay) {
-      alert("No tracks available to play.");
+    const first = serverTracks[0];
+    if (!first) {
+      alert("No tracks available.");
       return;
     }
     if (!audioRef.current) {
@@ -227,31 +213,27 @@ export default function Home() {
       audioRef.current.volume = 0.8;
     }
     audioPausedTimeRef.current = 0;
-    socket.emit("playTrack", trackToPlay.title, { resumeFrom: 0 });
+    socket.emit("playTrack", first.title, { resumeFrom: 0 });
     setStartClicked(true);
   }, [socket, serverTracks]);
 
-
-  // --- Menu Audio Controls ---
+  // --- Menu audio controls memo ---
   const menuAudioControls = useMemo(
     () => ({
       isPlaying: play,
-      onPlay: (trackTitle) => {
+      onPlay: (title) => {
         if (!socket?.connected) return;
         if (!audioRef.current) audioRef.current = new Audio();
         audioRef.current.volume = 0.8;
-
-        if (currentTrackTitleRef.current !== trackTitle) {
-          setCurrentTrackTitle(trackTitle);
+        if (currentTrackTitleRef.current !== title) {
+          setCurrentTrackTitle(title);
         }
-
-        const resumeTimeMs =
-          currentTrackTitleRef.current === trackTitle &&
-            audioPausedTimeRef.current > 0
+        const resumeMs =
+          currentTrackTitleRef.current === title &&
+          audioPausedTimeRef.current > 0
             ? audioPausedTimeRef.current * 1000
             : 0;
-
-        socket.emit("playTrack", trackTitle, { resumeFrom: resumeTimeMs });
+        socket.emit("playTrack", title, { resumeFrom: resumeMs });
       },
       onStop: () => {
         if (!socket?.connected || !currentTrackTitleRef.current) return;
@@ -263,38 +245,39 @@ export default function Home() {
         setPlay(false);
         clearScheduledMidiEvents();
       },
-      onSkip: (nextTrackTitle) => {
+      onSkip: (next) => {
         if (!socket?.connected) return;
         if (!audioRef.current) audioRef.current = new Audio();
-        setCurrentTrackTitle(nextTrackTitle);
+        setCurrentTrackTitle(next);
         audioPausedTimeRef.current = 0;
-        socket.emit("playTrack", nextTrackTitle, { resumeFrom: 0 });
+        socket.emit("playTrack", next, { resumeFrom: 0 });
       },
-      onPrevious: (prevTrackTitle) => {
+      onPrevious: (prev) => {
         if (!socket?.connected) return;
         if (!audioRef.current) audioRef.current = new Audio();
-        setCurrentTrackTitle(prevTrackTitle);
+        setCurrentTrackTitle(prev);
         audioPausedTimeRef.current = 0;
-        socket.emit("playTrack", prevTrackTitle, { resumeFrom: 0 });
+        socket.emit("playTrack", prev, { resumeFrom: 0 });
       },
     }),
-    [play, socket, clearScheduledMidiEvents]
+    [play, socket, clearScheduledMidiEvents],
   );
 
-  // --- Album Data for Menu ---
+  // --- Album data for menu ---
   const albumData = useMemo(
     () =>
       serverTracks.map((track) => ({
         title: track.title,
         audioSrc: track.audio,
       })),
-    [serverTracks]
+    [serverTracks],
   );
 
   // --- Render ---
   return (
     <div style={{ width: "100vw", height: "100vh", position: "relative" }}>
       <audio ref={audioRef} />
+      {/* background grid overlay */}
       <div
         style={{
           position: "absolute",
@@ -303,27 +286,25 @@ export default function Home() {
           width: "100%",
           height: "100%",
           background:
-            "linear-gradient(rgba(0,0,0,0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.2) 1px, transparent 1px)",
+            "linear-gradient(rgba(0,0,0,0.2) 1px, transparent 1px), " +
+            "linear-gradient(90deg, rgba(0,0,0,0.2) 1px, transparent 1px)",
           backgroundSize: "2px 2px",
           pointerEvents: "none",
           zIndex: 15,
         }}
       />
 
+      {/* logo */}
       <div
-        style={{
-          position: "absolute",
-          top: "20px",
-          left: "20px",
-          zIndex: 20,
-        }}
+        style={{ position: "absolute", top: "20px", left: "20px", zIndex: 20 }}
       >
-        <img src='/LOGOBIANCO.png' alt='logo' style={{ width: '200px' }} />
+        <img src="/LOGOBIANCO.png" alt="logo" style={{ width: "150px" }} />
       </div>
 
+      {/* menu button */}
       {!isFirstStart && (
         <button
-          onClick={() => setMenuOpen((prev) => !prev)}
+          onClick={() => setMenuOpen((p) => !p)}
           style={{
             position: "absolute",
             bottom: "20px",
@@ -339,7 +320,7 @@ export default function Home() {
             cursor: "pointer",
             opacity: menuOpen ? 0 : 1,
             transition: "all 0.3s ease",
-            textShadow: "2px 2px 0px #000",
+            textShadow: "2px 2px 0 #000",
             animation: menuOpen ? "none" : "blink 1s infinite",
           }}
         >
@@ -355,6 +336,7 @@ export default function Home() {
         currentTrackTitle={currentTrackTitle}
       />
 
+      {/* first-start screen */}
       {!play && isFirstStart && (
         <div
           style={{
@@ -368,26 +350,38 @@ export default function Home() {
             alignItems: "center",
             justifyContent: "center",
             zIndex: 20,
-            transition: 'opacity 1s',
-            opacity: startClicked ? 0 : 1
+            transition: "opacity 1s",
+            opacity: startClicked ? 0 : 1,
           }}
         >
-          <Canvas style={{ width: '100vw', height: '100vh' }}>
-            <ambientLight intensity={0.5} />
-            <pointLight position={[10, 10, 10]} />
-            <AlbumCover3D onClick={handleFirstStart} />
-          </Canvas>
+          {/* album wrapper */}
+          <div
+            style={{
+              width: "600px",
+              height: "600px",
+              flexShrink: 0,
+              marginTop: "-50px",
+            }}
+          >
+            <Canvas style={{ width: "100%", height: "100%" }}>
+              <AlbumCover3D onClick={handleFirstStart} />
+            </Canvas>
+          </div>
+
+          {/* play button under album */}
+
           <button
             style={{
-              background: 'none',
-              border: 'none',
-              color: '#fff',
-              cursor: 'pointer',
-              fontSize: '20px',
-              animation: 'blink 1s infinite',
-              marginTop: '20px',
-              position: 'absolute',
-              bottom: '10%'
+              background: "none",
+              border: "none",
+              color: "#fff",
+              cursor: "pointer",
+              fontSize: "20px",
+              animation: "blink 1s infinite",
+              marginTop: "20px",
+              position: "absolute",
+              bottom: "20%",
+              fontFamily: '"Press Start 2P", cursive',
             }}
             onClick={handleFirstStart}
           >
@@ -401,8 +395,6 @@ export default function Home() {
         @font-face {
           font-family: "aAnotherTag";
           src: url("/font/aAnotherTag.ttf") format("truetype");
-          font-weight: normal;
-          font-style: normal;
         }
         @keyframes pulse {
           0% {
@@ -444,13 +436,11 @@ export default function Home() {
         }
       `}</style>
 
+      {/* main 3D scene */}
       <Canvas
         dpr={0.6}
         shadows
-        camera={{
-          position: [-10, 5, 2],
-          fov: 60,
-        }}
+        camera={{ position: [-10, 5, 2], fov: 60 }}
         style={{
           background: `url('/sunset.jpg') no-repeat center center`,
           backgroundSize: "cover",
@@ -474,7 +464,10 @@ export default function Home() {
           currentCarIndex={currentCarIndex}
           lastPausedPosition={lastPausedPosition}
         />
-        <Effects currentSongIndex={currentSongIndex} shaderColor={shaderColor} />
+        <Effects
+          currentSongIndex={currentSongIndex}
+          shaderColor={shaderColor}
+        />
       </Canvas>
     </div>
   );

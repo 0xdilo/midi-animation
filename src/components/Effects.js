@@ -69,83 +69,84 @@ const gameboyShader = {
   `,
 };
 
-// Effect 3: Dot Screen Shader
-const DotScreenShader = {
-    uniforms: {
-        'tDiffuse': { value: null },
-        'tSize':    { value: new THREE.Vector2( 256, 256 ) },
-        'center':   { value: new THREE.Vector2( 0.5, 0.5 ) },
-        'angle':    { value: 1.57 },
-        'scale':    { value: 1.0 }
-    },
-    vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 ); }`,
-    fragmentShader: `
-        uniform vec2 center;
-        uniform float angle;
-        uniform float scale;
-        uniform vec2 tSize;
-        uniform sampler2D tDiffuse;
-        varying vec2 vUv;
+// Effect 3: God Rays Shader
+const GodRaysShader = {
+  uniforms: {
+    tDiffuse: { value: null },
+    lightPosition: { value: new THREE.Vector2(0.5, 0.5) },
+    exposure: { value: 0.6 },
+    decay: { value: 0.95 },
+    density: { value: 0.5 },
+    weight: { value: 0.4 },
+    samples: { value: 100 },
+  },
+  vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 ); }`,
+  fragmentShader: `
+    uniform sampler2D tDiffuse;
+    uniform vec2 lightPosition;
+    uniform float exposure;
+    uniform float decay;
+    uniform float density;
+    uniform float weight;
+    uniform int samples;
+    varying vec2 vUv;
 
-        float pattern() {
-            float s = sin( angle ), c = cos( angle );
-            vec2 tex = vUv * tSize - center;
-            vec2 point = vec2( c * tex.x - s * tex.y, s * tex.x + c * tex.y ) * scale;
-            return ( sin( point.x ) * sin( point.y ) ) * 4.0;
-        }
+    const int MAX_SAMPLES = 100;
 
-        void main() {
-            vec4 color = texture2D( tDiffuse, vUv );
-            float average = ( color.r + color.g + color.b ) / 3.0;
-            gl_FragColor = vec4( vec3( average * 10.0 - 5.0 + pattern() ), color.a );
-        }`
+    void main() {
+      vec2 texCoord = vUv;
+      vec2 deltaTexCoord = texCoord - lightPosition;
+      deltaTexCoord *= 1.0 / float(samples) * density;
+      float illuminationDecay = 1.0;
+      vec4 color = texture2D(tDiffuse, texCoord);
+
+      for (int i = 0; i < MAX_SAMPLES; i++) {
+        if (i >= samples) break;
+        texCoord -= deltaTexCoord;
+        vec4 sample = texture2D(tDiffuse, texCoord);
+        sample *= illuminationDecay * weight;
+        color += sample;
+        illuminationDecay *= decay;
+      }
+
+      gl_FragColor = color * exposure;
+    }
+  `
 };
 
-// Effect 4: Sobel Edge Detection Shader
-const SobelOperatorShader = {
-    uniforms: {
-        'tDiffuse': { value: null },
-        'resolution': { value: new THREE.Vector2() }
-    },
-    vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 ); }`,
-    fragmentShader: `
-        uniform sampler2D tDiffuse;
-        uniform vec2 resolution;
-        varying vec2 vUv;
+// Effect 4: Ripple Shader
+const RippleShader = {
+  uniforms: {
+    tDiffuse: { value: null },
+    time: { value: 0.0 },
+    frequency: { value: 20.0 },
+    amplitude: { value: 0.01 },
+  },
+  vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 ); }`,
+  fragmentShader: `
+    uniform sampler2D tDiffuse;
+    uniform float time;
+    uniform float frequency;
+    uniform float amplitude;
+    varying vec2 vUv;
 
-        void main() {
-            vec2 texel = vec2( 1.0 / resolution.x, 1.0 / resolution.y );
-            const mat3 Gx = mat3( -1, -2, -1, 0, 0, 0, 1, 2, 1 );
-            const mat3 Gy = mat3( -1, 0, 1, -2, 0, 2, -1, 0, 1 );
-
-            float tx0y0 = texture2D( tDiffuse, vUv + texel * vec2( -1, -1 ) ).r;
-            float tx1y0 = texture2D( tDiffuse, vUv + texel * vec2(  0, -1 ) ).r;
-            float tx2y0 = texture2D( tDiffuse, vUv + texel * vec2(  1, -1 ) ).r;
-            float tx0y1 = texture2D( tDiffuse, vUv + texel * vec2( -1,  0 ) ).r;
-            float tx1y1 = texture2D( tDiffuse, vUv + texel * vec2(  0,  0 ) ).r;
-            float tx2y1 = texture2D( tDiffuse, vUv + texel * vec2(  1,  0 ) ).r;
-            float tx0y2 = texture2D( tDiffuse, vUv + texel * vec2( -1,  1 ) ).r;
-            float tx1y2 = texture2D( tDiffuse, vUv + texel * vec2(  0,  1 ) ).r;
-            float tx2y2 = texture2D( tDiffuse, vUv + texel * vec2(  1,  1 ) ).r;
-
-            float Gx_val = tx0y0 * Gx[0][0] + tx1y0 * Gx[1][0] + tx2y0 * Gx[2][0] +
-                           tx0y1 * Gx[0][1] + tx1y1 * Gx[1][1] + tx2y1 * Gx[2][1] +
-                           tx0y2 * Gx[0][2] + tx1y2 * Gx[1][2] + tx2y2 * Gx[2][2];
-
-            float Gy_val = tx0y0 * Gy[0][0] + tx1y0 * Gy[1][0] + tx2y0 * Gy[2][0] +
-                           tx0y1 * Gy[0][1] + tx1y1 * Gy[1][1] + tx2y1 * Gy[2][1] +
-                           tx0y2 * Gy[0][2] + tx1y2 * Gy[1][2] + tx2y2 * Gy[2][2];
-
-            float G = sqrt( Gx_val * Gx_val + Gy_val * Gy_val );
-            gl_FragColor = vec4( G, G, G, 1.0 );
-        }`
+    void main() {
+      vec2 p = vUv;
+      float ripple = sin((p.x * frequency) + time) * sin((p.y * frequency) + time) * amplitude;
+      p.x += ripple;
+      p.y += ripple;
+      gl_FragColor = texture2D(tDiffuse, p);
+    }
+  `
 };
 
 
 export function Effects({ currentSongIndex, shaderColor }) {
-  const { gl, scene, camera } = useThree();
+  const { gl, scene, camera, clock } = useThree();
   const composer = useRef();
   const gameboyPass = useRef();
+  const godRaysPass = useRef();
+  const ripplePass = useRef();
 
   // Update gameboy shader tint color when prop changes
   useEffect(() => {
@@ -165,6 +166,8 @@ export function Effects({ currentSongIndex, shaderColor }) {
 
     const effectIndex = currentSongIndex % 5;
     gameboyPass.current = null; // Reset ref
+    godRaysPass.current = null;
+    ripplePass.current = null;
 
     // Effect 0: Bloom and Film
     if (effectIndex === 0) {
@@ -187,21 +190,16 @@ export function Effects({ currentSongIndex, shaderColor }) {
       gameboyPass.current = pass;
       effectComposer.addPass(pass);
     } 
-    // Effect 3: Dot Screen
+    // Effect 3: God Rays
     else if (effectIndex === 3) {
-      const pass = new ShaderPass(DotScreenShader);
-      if (pass.uniforms.scale) { // Check if uniform exists
-        pass.uniforms.scale.value = 4;
-      }
+      const pass = new ShaderPass(GodRaysShader);
+      godRaysPass.current = pass;
       effectComposer.addPass(pass);
     } 
-    // Effect 4: Edge Detection
+    // Effect 4: Ripple
     else if (effectIndex === 4) {
-      const pass = new ShaderPass(SobelOperatorShader);
-      if (pass.uniforms.resolution) { // Check if uniform exists
-        pass.uniforms.resolution.value.x = window.innerWidth * window.devicePixelRatio;
-        pass.uniforms.resolution.value.y = window.innerHeight * window.devicePixelRatio;
-      }
+      const pass = new ShaderPass(RippleShader);
+      ripplePass.current = pass;
       effectComposer.addPass(pass);
     }
 
@@ -231,6 +229,14 @@ export function Effects({ currentSongIndex, shaderColor }) {
 
   useFrame((state, delta) => {
     if (composer.current) {
+      const { clock } = state;
+      if (godRaysPass.current) {
+        godRaysPass.current.uniforms.lightPosition.value.x = 0.5 + Math.sin(clock.getElapsedTime() * 0.5) * 0.2;
+        godRaysPass.current.uniforms.lightPosition.value.y = 0.5 + Math.cos(clock.getElapsedTime() * 0.5) * 0.2;
+      }
+      if (ripplePass.current) {
+        ripplePass.current.uniforms.time.value = clock.getElapsedTime();
+      }
       composer.current.render(delta);
     }
   }, 1);

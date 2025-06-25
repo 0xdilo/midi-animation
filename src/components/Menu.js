@@ -137,17 +137,16 @@ export default function Menu({
             },
           }}
         >
-
-
           <div
             style={{
-              width: "min(80vw, 500px)",
-              height: "min(80vw, 500px)",
+              width: "min(90vw, 600px)",
+              height: "min(90vw, 600px)",
               margin: "0 auto 0px",
+              marginTop: "100px",
             }}
           >
             <Canvas>
-              <ambientLight intensity={0.5} />
+              <ambientLight intensity={1} />
               <pointLight position={[10, 10, 10]} />
               <LevitatingAlbumCover textureUrl={currentCover} />
             </Canvas>
@@ -159,7 +158,7 @@ export default function Menu({
               fontFamily: '"Press Start 2P", cursive',
               fontSize: "clamp(24px, 5vw, 36px)",
               textShadow: "2px 2px 0px #000",
-              marginTop: "100px"
+              marginTop: "50px",
             }}
           >
             {currentAlbumDisplay?.title || "Loading Tracks..."}
@@ -445,8 +444,7 @@ function LevitatingAlbumCover({ textureUrl }) {
   return (
     <mesh ref={meshRef}>
       <boxGeometry args={[4, 4, 0.2]} />
-      <meshStandardMaterial map={texture} />
+      <meshBasicMaterial map={texture} transparent opacity={0.99} />
     </mesh>
   );
 }
-
