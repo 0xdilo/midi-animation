@@ -27,9 +27,11 @@ function msToTicksAccurate(ms, player) {
 }
 
 const TRACKS = {
-  "Song 1": { midi: "public/traccia.mid", audio: "/traccia.mp3" }, // Ensure audio path is web-accessible
-  "Song 2": { midi: "public/traccia.mid", audio: "/traccia.mp3" },
-  "Song 3": { midi: "public/traccia.mid", audio: "/traccia.mp3" },
+  "CRUISIN-V1": { midi: "public/CRUISING-MIDI-2 CHANNELS.mid", audio: "/01-CRUISIN-V1.wav" },
+  "BOSSANOVA-V3": { midi: "public/BOSSANOVA-MIDI-V3.mid", audio: "/02-BOSSANOVA-V3.mp3" },
+  "SEA-V3": { midi: "public/SEA-V4-MIDI-2 CHANNELS.mid", audio: "/03-SEA-V3.mp3" },
+  "T21-V2": { midi: "public/T21-MIDI-V2.mid", audio: "/04-T21-V2.wav" },
+  "BOSSANOVA-REMIX-V1": { midi: "public/BOSSANOVA-MIDI-REMIX-V3.mid", audio: "/05-BOSSANOVA-REMIX-V1.wav" },
 };
 
 const ioHandler = (req, res) => {

@@ -138,7 +138,7 @@ export function Scene({ lightColor, play, instruments, currentCarIndex, lastPaus
 
     // Camera shake logic
     if (instruments && instruments[1] && instruments[1].shakeTrigger) {
-      shakeIntensity.current = 0.5;
+      shakeIntensity.current = 0.1;
     }
     if (shakeIntensity.current > 0) {
       const shakeX = (Math.random() - 0.5) * shakeIntensity.current;
@@ -185,21 +185,21 @@ export function Scene({ lightColor, play, instruments, currentCarIndex, lastPaus
       <pointLight position={[-50, 5, 50]} intensity={10} color="#9933ff" distance={200} decay={2} />
 
       <Suspense fallback={null}>
-        {currentCarIndex === 0 && (
+        {currentCarIndex % 3 === 0 && (
           <MainCar
             position={[0, 0, -5]}
             rotation={[0, -Math.PI / 2, 0]}
             lightColor={lightColor}
           />
         )}
-        {currentCarIndex === 1 && (
+        {currentCarIndex % 3 === 1 && (
           <MainCar2
             position={[0, 0, -5]}
             rotation={[0, -Math.PI / 2, 0]}
             lightColor={lightColor}
           />
         )}
-        {currentCarIndex === 2 && (
+        {currentCarIndex % 3 === 2 && (
           <MainCar3
             position={[0, 0, -5]}
             rotation={[0, -Math.PI / 2, 0]}
