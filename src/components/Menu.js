@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, useMemo } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { TextureLoader } from "three";
-import { FaGlobe, FaInstagram, FaTwitter } from "react-icons/fa";
+import { FaGlobe, FaInstagram, FaBandcamp } from "react-icons/fa";
 
 // Static cover paths, assuming order matches serverTracks from server
 // If serverTracks has more items than this array, covers will cycle.
@@ -14,10 +14,12 @@ export default function Menu({
   audioControls,
   albumData = [], // Expects array like [{ title: "Song 1", audioSrc: "/path" }, ...]
   currentTrackTitle,
+  isFirstStart = false,
 }) {
   const [currentAlbumIndex, setCurrentAlbumIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [windowSize, setWindowSize] = useState({ width: 0, height: 0 });
+  const [isClosing, setIsClosing] = useState(false);
   const iconSize = 100;
 
   useEffect(() => {
@@ -92,289 +94,340 @@ export default function Menu({
   const currentCover =
     albumCovers[currentAlbumIndex % albumCovers.length] || "/album.png"; // Fallback cover
 
+  // Handle menu close animation
+  const handleClose = () => {
+    setIsClosing(true);
+    setTimeout(() => {
+      setMenuOpen(false);
+      setIsClosing(false);
+    }, 300); // Match animation duration
+  };
+
+  // Don't show menu on first start screen to prevent layout issues
+  if ((!menuOpen && !isClosing) || isFirstStart) return null;
+
   return (
     <div
       style={{
-        position: "absolute",
-        bottom: 0,
-        left: "50%",
-        transform: `translateX(-50%) translateY(${menuOpen ? "0" : "100%"})`,
-        zIndex: 25, // Ensure this is high enough, but index.js button is 20
-        width: "100%",
-        height: "100%",
-        background: "rgba(0,0,0,0.85)",
-        transition: "transform 0.3s ease",
-        display: "flex",
+        position: "fixed",
+        top: 0,
+        left: 0,
+        width: "100vw",
+        height: "100vh",
+        background: "rgba(0,0,0,0.95)",
+        zIndex: isFirstStart ? -1 : 1000,
+        display: isFirstStart ? "none" : "flex",
         flexDirection: "column",
-        justifyContent: "center",
+        justifyContent: "flex-start",
         alignItems: "center",
-        // zIndex: 1000, // This was in original, ensure it's what you want relative to other elements
+        padding: "20px",
+        paddingTop: "80px",
+        boxSizing: "border-box",
+        overflowY: "auto",
+        animation: isClosing
+          ? "menuSlideOut 0.3s ease-in"
+          : "menuSlide 0.3s ease-out",
+        visibility: isFirstStart ? "hidden" : "visible",
+        opacity: isFirstStart ? 0 : 1,
+        overflowX: "hidden",
+        transform: isClosing ? "translateY(100%)" : "translateY(0)",
       }}
     >
+      {/* Album cover */}
+      <div
+        style={{
+          width: "min(500px, 110vw)",
+          height: "min(500px, 110vw)",
+          marginBottom: "20px",
+          flexShrink: 0,
+        }}
+      >
+        <Canvas>
+          <ambientLight intensity={1} />
+          <pointLight position={[10, 10, 10]} />
+          <LevitatingAlbumCover textureUrl={currentCover} />
+        </Canvas>
+      </div>
+
+      {/* Track info */}
       <div
         style={{
           textAlign: "center",
-          height: "100vh",
-          display: "flex",
-          flexDirection: "column",
-          padding: "20px 0",
-          overflow: "hidden",
-          "@media (maxWidth: 768px)": {
-            padding: "0",
-          },
+          marginBottom: "20px",
+          color: "#fff",
+          padding: "0 10px",
         }}
       >
-        <div
+        <h2
           style={{
-            height: "100%",
-            overflow: "hidden",
-            display: "flex",
-            flexDirection: "column",
-            scrollbarWidth: "none",
-            msOverflowStyle: "none",
-            "&::-webkitScrollbar": {
-              display: "none",
-            },
+            fontSize: "clamp(14px, 4vw, 24px)",
+            marginBottom: "10px",
+            fontFamily: '"Press Start 2P", cursive',
+            lineHeight: 1.2,
+            wordBreak: "break-word",
+            textShadow: "2px 2px 0px #000",
           }}
         >
-          <div
-            style={{
-              width: "min(90vw, 600px)",
-              height: "min(90vw, 600px)",
-              margin: "0 auto 0px",
-              marginTop: "100px",
-            }}
-          >
-            <Canvas>
-              <ambientLight intensity={1} />
-              <pointLight position={[10, 10, 10]} />
-              <LevitatingAlbumCover textureUrl={currentCover} />
-            </Canvas>
-          </div>
-
-          <h3
-            style={{
-              color: "#fff",
-              fontFamily: '"Press Start 2P", cursive',
-              fontSize: "clamp(24px, 5vw, 36px)",
-              textShadow: "2px 2px 0px #000",
-              marginTop: "50px",
-            }}
-          >
-            {currentAlbumDisplay?.title || "Loading Tracks..."}
-          </h3>
-
-          {/* Control Buttons */}
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              gap: "10px",
-              marginBottom: "30px",
-            }}
-          >
-            <button
-              onClick={handlePrevious}
-              style={{
-                padding: "15px",
-                background: "transparent",
-                color: "#fff",
-                border: "0",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: "60px",
-                height: "60px",
-                transition: "color 0.2s ease",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = "#FFDB58")}
-              onMouseLeave={(e) => (e.currentTarget.style.color = "#fff")}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 100 100"
-                width={iconSize}
-                height={iconSize}
-                fill="currentColor"
-                style={{
-                  transform: "rotate(180deg)",
-                  transition: "fill 0.2s ease",
-                }}
-              >
-                <g>
-                  <rect x="36" y="54" width="9" height="9" />
-                  <polygon points="27,36 36,36 36,27 27,27 27,18 18,18 18,71.667 18,81 27,81 27,72 36,72 36,63 27,63  " />
-                  <rect x="36" y="36" width="9" height="9" />
-                  <rect x="72" y="54" width="9" height="9" />
-                  <polygon points="63,36 72,36 72,27 63,27 63,18 54,18 54,45 45,45 45,54 54,54 54,71.667 54,81 63,81 63,72 72,72 72,63 63,63  " />
-                  <rect x="72" y="36" width="9" height="9" />
-                  <rect x="81" y="45" width="9" height="9" />
-                </g>
-              </svg>
-            </button>
-            <button
-              onClick={handlePlayToggle}
-              style={{
-                padding: "15px",
-                background: "rgba(0,0,0,0)",
-                border: "2px solid #fff",
-                color: "#fff",
-                cursor: "pointer",
-                borderRadius: "50%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: "60px",
-                height: "60px",
-                transition: "color 0.2s ease, border-color 0.2s ease",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.color = "#FFDB58";
-                e.currentTarget.style.borderColor = "#FFDB58";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.color = "#fff";
-                e.currentTarget.style.borderColor = "#fff";
-              }}
-            >
-              {isPlaying ? (
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 100 100"
-                  width={iconSize}
-                  height={iconSize}
-                  fill="currentColor"
-                  style={{
-                    transition: "fill 0.2s ease",
-                  }}
-                >
-                  <g>
-                    <polygon points="55,37 55,49 55,61 55,73 64,73 64,61 64,49 64,37" />
-                    <polygon points="37,49 37,61 37,73 46,73 46,61 46,49 46,37 37,37" />
-                  </g>
-                </svg>
-              ) : (
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 100 100"
-                  width={iconSize}
-                  height={iconSize}
-                  fill="currentColor"
-                >
-                  <g>
-                    <rect x="55" y="55" width="9" height="9" />
-                    <polygon points="46,37 55,37 55,28 46,28 46,19 37,19 37,72.667 37,82 46,82 46,73 55,73 55,64 46,64  " />
-                    <rect x="55" y="37" width="9" height="9" />
-                    <rect x="64" y="46" width="9" height="9" />
-                  </g>
-                </svg>
-              )}
-            </button>
-            <button
-              onClick={handleSkip}
-              style={{
-                padding: "15px",
-                background: "rgba(0,0,0,0)",
-                border: "0",
-                color: "#fff",
-                cursor: "pointer",
-                borderRadius: "50%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: "60px",
-                height: "60px",
-                transition: "color 0.2s ease",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = "#FFDB58")}
-              onMouseLeave={(e) => (e.currentTarget.style.color = "#fff")}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 100 100"
-                width={iconSize}
-                height={iconSize}
-                fill="currentColor"
-                style={{
-                  transition: "fill 0.2s ease",
-                }}
-              >
-                <g>
-                  <rect x="36" y="54" width="9" height="9" />
-                  <polygon points="27,36 36,36 36,27 27,27 27,18 18,18 18,71.667 18,81 27,81 27,72 36,72 36,63 27,63  " />
-                  <rect x="36" y="36" width="9" height="9" />
-                  <rect x="72" y="54" width="9" height="9" />
-                  <polygon points="63,36 72,36 72,27 63,27 63,18 54,18 54,45 45,45 45,54 54,54 54,71.667 54,81 63,81 63,72 72,72 72,63 63,63  " />
-                  <rect x="72" y="36" width="9" height="9" />
-                  <rect x="81" y="45" width="9" height="9" />
-                </g>
-              </svg>
-            </button>
-          </div>
-        </div>
-        {/* Social Links */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            gap: "15px",
-            padding: "0px", // Was 20px, check if 0px is intended
-            width: "100%",
-          }}
-        >
-          <a
-            href="https://twitter.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              color: "#fff",
-              fontSize: "30px",
-              textDecoration: "none",
-              transition: "color 0.2s ease",
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = "#1DA1F2")}
-            onMouseLeave={(e) => (e.currentTarget.style.color = "#fff")}
-          >
-            <FaTwitter />
-          </a>
-          <a
-            href="https://instagram.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              color: "#fff",
-              fontSize: "30px",
-              textDecoration: "none",
-              transition: "color 0.2s ease",
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = "#E1306C")}
-            onMouseLeave={(e) => (e.currentTarget.style.color = "#fff")}
-          >
-            <FaInstagram />
-          </a>
-          <a
-            href="https://yourportfolio.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              color: "#fff",
-              fontSize: "30px",
-              textDecoration: "none",
-              transition: "color 0.2s ease",
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = "#FFDB58")}
-            onMouseLeave={(e) => (e.currentTarget.style.color = "#fff")}
-          >
-            <FaGlobe />
-          </a>
-        </div>
+          {currentAlbumDisplay?.title || "Loading Tracks..."}
+        </h2>
+        <p style={{ fontSize: "clamp(12px, 3vw, 16px)", opacity: 0.8 }}>
+          {currentAlbumIndex + 1} / {albumData.length}
+        </p>
       </div>
 
-      <button
-        onClick={() => setMenuOpen(false)}
+      {/* Controls */}
+      <div
         style={{
-          position: "fixed",
+          display: "flex",
+          gap: "15px",
+          marginBottom: "30px",
+          alignItems: "center",
+          flexWrap: "wrap",
+          justifyContent: "center",
+        }}
+      >
+        <button
+          onClick={handlePrevious}
+          style={{
+            padding: "15px",
+            background: "transparent",
+            color: "#fff",
+            border: "0",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "60px",
+            height: "60px",
+            transition: "color 0.2s ease",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = "#FFDB58")}
+          onMouseLeave={(e) => (e.currentTarget.style.color = "#fff")}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 100 100"
+            width={iconSize}
+            height={iconSize}
+            fill="currentColor"
+            style={{
+              transform: "rotate(180deg)",
+              transition: "fill 0.2s ease",
+            }}
+          >
+            <g>
+              <rect x="36" y="54" width="9" height="9" />
+              <polygon points="27,36 36,36 36,27 27,27 27,18 18,18 18,71.667 18,81 27,81 27,72 36,72 36,63 27,63  " />
+              <rect x="36" y="36" width="9" height="9" />
+              <rect x="72" y="54" width="9" height="9" />
+              <polygon points="63,36 72,36 72,27 63,27 63,18 54,18 54,45 45,45 45,54 54,54 54,71.667 54,81 63,81 63,72 72,72 72,63 63,63  " />
+              <rect x="72" y="36" width="9" height="9" />
+              <rect x="81" y="45" width="9" height="9" />
+            </g>
+          </svg>
+        </button>
+        <button
+          onClick={handlePlayToggle}
+          style={{
+            padding: "15px",
+            background: "rgba(0,0,0,0)",
+            border: "2px solid #fff",
+            color: "#fff",
+            cursor: "pointer",
+            borderRadius: "50%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "60px",
+            height: "60px",
+            transition: "color 0.2s ease, border-color 0.2s ease",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = "#FFDB58";
+            e.currentTarget.style.borderColor = "#FFDB58";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = "#fff";
+            e.currentTarget.style.borderColor = "#fff";
+          }}
+        >
+          {isPlaying ? (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 100 100"
+              width={iconSize}
+              height={iconSize}
+              fill="currentColor"
+              style={{
+                transition: "fill 0.2s ease",
+              }}
+            >
+              <g>
+                <polygon points="55,37 55,49 55,61 55,73 64,73 64,61 64,49 64,37" />
+                <polygon points="37,49 37,61 37,73 46,73 46,61 46,49 46,37 37,37" />
+              </g>
+            </svg>
+          ) : (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 100 100"
+              width={iconSize}
+              height={iconSize}
+              fill="currentColor"
+            >
+              <g>
+                <rect x="55" y="55" width="9" height="9" />
+                <polygon points="46,37 55,37 55,28 46,28 46,19 37,19 37,72.667 37,82 46,82 46,73 55,73 55,64 46,64  " />
+                <rect x="55" y="37" width="9" height="9" />
+                <rect x="64" y="46" width="9" height="9" />
+              </g>
+            </svg>
+          )}
+        </button>
+        <button
+          onClick={handleSkip}
+          style={{
+            padding: "15px",
+            background: "rgba(0,0,0,0)",
+            border: "0",
+            color: "#fff",
+            cursor: "pointer",
+            borderRadius: "50%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "60px",
+            height: "60px",
+            transition: "color 0.2s ease",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = "#FFDB58")}
+          onMouseLeave={(e) => (e.currentTarget.style.color = "#fff")}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 100 100"
+            width={iconSize}
+            height={iconSize}
+            fill="currentColor"
+            style={{
+              transition: "fill 0.2s ease",
+            }}
+          >
+            <g>
+              <rect x="36" y="54" width="9" height="9" />
+              <polygon points="27,36 36,36 36,27 27,27 27,18 18,18 18,71.667 18,81 27,81 27,72 36,72 36,63 27,63  " />
+              <rect x="36" y="36" width="9" height="9" />
+              <rect x="72" y="54" width="9" height="9" />
+              <polygon points="63,36 72,36 72,27 63,27 63,18 54,18 54,45 45,45 45,54 54,54 54,71.667 54,81 63,81 63,72 72,72 72,63 63,63  " />
+              <rect x="72" y="36" width="9" height="9" />
+              <rect x="81" y="45" width="9" height="9" />
+            </g>
+          </svg>
+        </button>
+      </div>
+
+      {/* Social Links */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          gap: "15px",
+          marginTop: "auto",
+          paddingBottom: "20px",
+          width: "100%",
+        }}
+      >
+        <a
+          href="https://twitter.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            color: "#fff",
+            fontSize: "30px",
+            textDecoration: "none",
+            transition: "color 0.2s ease",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = "#1DA1F2")}
+          onMouseLeave={(e) => (e.currentTarget.style.color = "#fff")}
+        >
+          <FaBandcamp />
+        </a>
+        <a
+          href="https://instagram.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            color: "#fff",
+            fontSize: "30px",
+            textDecoration: "none",
+            transition: "color 0.2s ease",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = "#E1306C")}
+          onMouseLeave={(e) => (e.currentTarget.style.color = "#fff")}
+        >
+          <FaInstagram />
+        </a>
+        <a
+          href="https://yourportfolio.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            color: "#fff",
+            fontSize: "30px",
+            textDecoration: "none",
+            transition: "color 0.2s ease",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = "#FFDB58")}
+          onMouseLeave={(e) => (e.currentTarget.style.color = "#fff")}
+        >
+          <FaGlobe />
+        </a>
+      </div>
+
+      {/* Download button */}
+      <div
+        style={{
+          marginTop: "20px",
+          marginBottom: "20px",
+        }}
+      >
+        <button
+          style={{
+            background: "#FFDB58",
+            border: "2px solid #FFDB58",
+            color: "#000",
+            cursor: "pointer",
+            padding: "15px 30px",
+            fontSize: "clamp(14px, 3vw, 18px)",
+            fontFamily: '"Press Start 2P", cursive',
+            borderRadius: "0",
+            textShadow: "none",
+            fontWeight: "bold",
+            transition: "all 0.3s ease",
+            animation: "pulse 2s infinite",
+            textTransform: "uppercase",
+            letterSpacing: "1px",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "#fff";
+            e.currentTarget.style.borderColor = "#fff";
+            e.currentTarget.style.transform = "scale(1.05)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "#FFDB58";
+            e.currentTarget.style.borderColor = "#FFDB58";
+            e.currentTarget.style.transform = "scale(1)";
+          }}
+        >
+          DOWNLOAD NOW
+        </button>
+      </div>
+
+      {/* Close button */}
+      <button
+        onClick={handleClose}
+        style={{
+          position: "absolute",
           top: "20px",
           right: "20px",
           background: "none",
@@ -384,6 +437,7 @@ export default function Menu({
           display: "block",
           transition: "color 0.2s ease",
           color: "#fff",
+          zIndex: 1001,
         }}
         onMouseEnter={(e) => (e.currentTarget.style.color = "#FFDB58")}
         onMouseLeave={(e) => (e.currentTarget.style.color = "#fff")}
@@ -391,8 +445,8 @@ export default function Menu({
         <svg
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 100 100"
-          width={windowSize.width <= 768 ? 40 : 90}
-          height={windowSize.width <= 768 ? 40 : 90}
+          width={windowSize.width <= 768 ? 40 : 60}
+          height={windowSize.width <= 768 ? 40 : 60}
           fill="currentColor"
         >
           <g>

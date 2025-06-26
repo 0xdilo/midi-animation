@@ -6,6 +6,7 @@ import { Scene } from "../components/Scene";
 import dynamic from "next/dynamic";
 import AlbumCover3D from "../components/AlbumCover3D";
 import { PerformanceMonitor } from "../components/PerformanceMonitor";
+import { Html } from "@react-three/drei";
 
 const Menu = dynamic(() => import("../components/Menu"), { ssr: false });
 
@@ -335,9 +336,10 @@ export default function Home() {
         audioControls={menuAudioControls}
         albumData={albumData}
         currentTrackTitle={currentTrackTitle}
+        isFirstStart={isFirstStart}
       />
 
-      {/* first-start screen */}
+      {/* first-start screen with full-screen canvas */}
       {!play && isFirstStart && (
         <div
           style={{
@@ -346,48 +348,43 @@ export default function Home() {
             left: 0,
             width: "100%",
             height: "100%",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
             zIndex: 20,
             transition: "opacity 1s",
             opacity: startClicked ? 0 : 1,
           }}
         >
-          {/* album wrapper */}
-          <div
-            style={{
-              width: "600px",
-              height: "600px",
-              flexShrink: 0,
-              marginTop: "-50px",
-            }}
+          <Canvas
+            camera={{ position: [0, 0, 8], fov: 60 }}
+            style={{ width: "100%", height: "100%" }}
           >
-            <Canvas style={{ width: "100%", height: "100%" }}>
-              <AlbumCover3D onClick={handleFirstStart} />
-            </Canvas>
-          </div>
-
-          {/* play button under album */}
-
-          <button
-            style={{
-              background: "none",
-              border: "none",
-              color: "#fff",
-              cursor: "pointer",
-              fontSize: "20px",
-              animation: "blink 1s infinite",
-              marginTop: "20px",
-              position: "absolute",
-              bottom: "20%",
-              fontFamily: '"Press Start 2P", cursive',
-            }}
-            onClick={handleFirstStart}
-          >
-            PRESS START TO PLAY
-          </button>
+            <AlbumCover3D onClick={handleFirstStart} />
+            <Html
+              center
+              position={[0, -3, 0]}
+              style={{
+                pointerEvents: "auto",
+                userSelect: "none",
+              }}
+            >
+              <button
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "#fff",
+                  cursor: "pointer",
+                  fontSize: "clamp(16px, 4vw, 24px)",
+                  animation: "blink 1s infinite",
+                  fontFamily: '"Press Start 2P", cursive',
+                  textShadow: "2px 2px 4px rgba(0,0,0,0.8)",
+                  padding: "10px 20px",
+                  whiteSpace: "nowrap",
+                }}
+                onClick={handleFirstStart}
+              >
+                PRESS START TO PLAY
+              </button>
+            </Html>
+          </Canvas>
         </div>
       )}
 
@@ -419,12 +416,31 @@ export default function Home() {
             opacity: 1;
           }
         }
+        @keyframes pulse {
+          0% {
+            box-shadow: 0 0 0 0 rgba(255, 219, 88, 0.7);
+          }
+          70% {
+            box-shadow: 0 0 0 10px rgba(255, 219, 88, 0);
+          }
+          100% {
+            box-shadow: 0 0 0 0 rgba(255, 219, 88, 0);
+          }
+        }
         @keyframes menuSlide {
           from {
             transform: translateY(100%);
           }
           to {
             transform: translateY(0);
+          }
+        }
+        @keyframes menuSlideOut {
+          from {
+            transform: translateY(0);
+          }
+          to {
+            transform: translateY(100%);
           }
         }
         body {
@@ -439,7 +455,11 @@ export default function Home() {
 
       {/* main 3D scene */}
       <Canvas
-        dpr={typeof window !== 'undefined' ? Math.min(window.devicePixelRatio, 1.5) : 1}
+        dpr={
+          typeof window !== "undefined"
+            ? Math.min(window.devicePixelRatio, 1.5)
+            : 1
+        }
         shadows="soft"
         camera={{ position: [-10, 5, 2], fov: 60 }}
         style={{
