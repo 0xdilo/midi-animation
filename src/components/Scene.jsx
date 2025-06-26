@@ -1,7 +1,8 @@
 import { useFrame, useThree } from "@react-three/fiber";
-import { useRef, useState } from "react";
+import { useRef, useState, useMemo, useCallback } from "react";
 import { OrbitControls } from "@react-three/drei";
 import { Suspense, lazy } from "react";
+import * as THREE from "three";
 
 const MainCar = lazy(() => import("./Car"));
 const MainCar2 = lazy(() => import("./Car2"));
@@ -85,9 +86,11 @@ export function Scene({ lightColor, play, instruments, currentCarIndex, lastPaus
   const controlsRef = useRef();
   const lastPositionRef = useRef(null);
 
-  // State for spawned cars
+  // State for spawned cars with object pooling
   const [oppositeCars, setOppositeCars] = useState([]);
   const lastSpawnTime = useRef(0);
+  const carPool = useRef(new Map());
+  const poolSize = 20;
 
   const targetSpeed = play ? MOVEMENT_CONFIG.targetSpeed : 0;
 
@@ -154,30 +157,42 @@ export function Scene({ lightColor, play, instruments, currentCarIndex, lastPaus
       controlsRef.current.update();
     }
 
-    // Opposite cars logic
+    // Optimized opposite cars logic with object pooling
     const now = clock.getElapsedTime();
+    const deltaTime = 0.016;
+    
     if (now - lastSpawnTime.current > getRandomBetween(...CARS_CONFIG.spawnInterval)) {
-      const randomCarConfig = CARS_CONFIG.positions[Math.floor(Math.random() * CARS_CONFIG.positions.length)];
-      const speed = CARS_CONFIG.speed;
-      setOppositeCars((prev) => [
-        ...prev,
-        {
-          id: now,
-          model: randomCarConfig.model,
-          position: [CARS_CONFIG.startX, -1, randomCarConfig.z],
-          speed: speed,
-          rotation: randomCarConfig.rotation,
-        },
-      ]);
+      if (oppositeCars.length < poolSize) {
+        const randomCarConfig = CARS_CONFIG.positions[Math.floor(Math.random() * CARS_CONFIG.positions.length)];
+        const speed = CARS_CONFIG.speed;
+        setOppositeCars((prev) => [
+          ...prev,
+          {
+            id: now,
+            model: randomCarConfig.model,
+            position: [CARS_CONFIG.startX, -1, randomCarConfig.z],
+            speed: speed,
+            rotation: randomCarConfig.rotation,
+          },
+        ]);
+      }
       lastSpawnTime.current = now;
     }
 
-    setOppositeCars((prev) =>
-      prev.map((car) => ({
-        ...car,
-        position: [car.position[0] + car.speed * 0.016, car.position[1], car.position[2]],
-      })).filter((car) => car.position[0] < CARS_CONFIG.endX)
-    );
+    setOppositeCars((prev) => {
+      const updated = [];
+      for (let i = 0; i < prev.length; i++) {
+        const car = prev[i];
+        const newX = car.position[0] + car.speed * deltaTime;
+        if (newX < CARS_CONFIG.endX) {
+          updated.push({
+            ...car,
+            position: [newX, car.position[1], car.position[2]],
+          });
+        }
+      }
+      return updated;
+    });
   });
 
   return (

@@ -5,6 +5,7 @@ import { Effects } from "../components/Effects";
 import { Scene } from "../components/Scene";
 import dynamic from "next/dynamic";
 import AlbumCover3D from "../components/AlbumCover3D";
+import { PerformanceMonitor } from "../components/PerformanceMonitor";
 
 const Menu = dynamic(() => import("../components/Menu"), { ssr: false });
 
@@ -438,8 +439,8 @@ export default function Home() {
 
       {/* main 3D scene */}
       <Canvas
-        dpr={0.6}
-        shadows
+        dpr={typeof window !== 'undefined' ? Math.min(window.devicePixelRatio, 1.5) : 1}
+        shadows="soft"
         camera={{ position: [-10, 5, 2], fov: 60 }}
         style={{
           background: `url('/sunset.jpg') no-repeat center center`,
@@ -449,8 +450,13 @@ export default function Home() {
           powerPreference: "high-performance",
           antialias: false,
           stencil: false,
-          depth: false,
+          depth: true,
+          alpha: false,
+          preserveDrawingBuffer: false,
+          failIfMajorPerformanceCaveat: true,
         }}
+        performance={{ min: 0.1 }}
+        frameloop="demand"
       >
         <directionalLight
           position={[-50, 20, 50]}
@@ -468,6 +474,7 @@ export default function Home() {
           currentSongIndex={currentSongIndex}
           shaderColor={shaderColor}
         />
+        <PerformanceMonitor />
       </Canvas>
     </div>
   );

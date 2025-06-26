@@ -1,13 +1,42 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import { useGLTF } from '@react-three/drei'
+import * as THREE from 'three'
 
 export default function Model(props) {
   const { nodes, materials } = useGLTF('/cars/car1/car1-transformed.glb')
+  
+  const optimizedMaterials = useMemo(() => ({
+    PaletteMaterial001: new THREE.MeshLambertMaterial({ 
+      color: materials.PaletteMaterial001?.color || 0xffffff 
+    }),
+    PaletteMaterial002: new THREE.MeshLambertMaterial({ 
+      color: materials.PaletteMaterial002?.color || 0xffffff 
+    }),
+    material: new THREE.MeshLambertMaterial({ 
+      color: materials.material?.color || 0xffffff 
+    })
+  }), [materials])
+  
   return (
     <group {...props} dispose={null} scale={0.02}>
-      <mesh geometry={nodes.Object_2.geometry} material={materials.PaletteMaterial001} rotation={[-Math.PI, 0, 0]} />
-      <mesh geometry={nodes.Object_3.geometry} material={materials.PaletteMaterial002} rotation={[-Math.PI, 0, 0]} />
-      <mesh geometry={nodes.Object_5.geometry} material={materials.material} rotation={[-Math.PI, 0, 0]} />
+      <mesh 
+        geometry={nodes.Object_2.geometry} 
+        material={optimizedMaterials.PaletteMaterial001} 
+        rotation={[-Math.PI, 0, 0]} 
+        frustumCulled={false}
+      />
+      <mesh 
+        geometry={nodes.Object_3.geometry} 
+        material={optimizedMaterials.PaletteMaterial002} 
+        rotation={[-Math.PI, 0, 0]} 
+        frustumCulled={false}
+      />
+      <mesh 
+        geometry={nodes.Object_5.geometry} 
+        material={optimizedMaterials.material} 
+        rotation={[-Math.PI, 0, 0]} 
+        frustumCulled={false}
+      />
     </group>
   )
 }

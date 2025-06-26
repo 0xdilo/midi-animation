@@ -1,4 +1,4 @@
-import React, { useRef, useMemo, useEffect } from "react";
+import React, { useRef, useMemo, useEffect, useCallback } from "react";
 import { SpotLight, useGLTF } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
@@ -49,13 +49,17 @@ export default function Model(props) {
     backLeft: useRef(),
   };
 
-  useFrame((state, delta) => {
+  const updateWheels = useCallback((delta) => {
     // Rotate all wheel groups anti-clockwise
     Object.values(wheelRefs).forEach((ref) => {
       if (ref.current) {
-        ref.current.rotation.x += delta * 8; // Positive for anti-clockwise, adjust speed by changing 2
+        ref.current.rotation.x += delta * 8;
       }
     });
+  }, []);
+
+  useFrame((state, delta) => {
+    updateWheels(delta);
   });
   // Add cleanup for materials when component unmounts
   useEffect(() => {
@@ -73,18 +77,22 @@ export default function Model(props) {
         <mesh
           geometry={nodes.Object_4.geometry}
           material={materials["Material.001"]}
+          frustumCulled={false}
         />
         <mesh
           geometry={nodes.Object_5.geometry}
           material={materials["Material.002"]}
+          frustumCulled={false}
         />
         <mesh
           geometry={nodes.Object_6.geometry}
           material={materials["Material.006"]}
+          frustumCulled={false}
         />
         <mesh
           geometry={nodes.Object_7.geometry}
           material={materials["Material.007"]}
+          frustumCulled={false}
         />
 
         {/* Left headlight */}
@@ -92,16 +100,17 @@ export default function Model(props) {
         <mesh
           geometry={nodes.Object_9.geometry}
           material={materials["Material.011"]}
+          frustumCulled={false}
         />
         <group position={[-4, 0, 13]}>
           <SpotLight
             color={lightColor}
-            intensity={0.1}
-            angle={1}
-            penumbra={1}
-            distance={30}
-            decay={2}
-            power={5}
+            intensity={0.05}
+            angle={0.8}
+            penumbra={0.8}
+            distance={25}
+            decay={1.5}
+            power={3}
             castShadow={false}
             target-position={[Math.cos(15.7) * 10, 0.9, Math.sin(16.4) * 10]}
           />
@@ -112,12 +121,12 @@ export default function Model(props) {
         <group position={[4, 0, 13]}>
           <SpotLight
             color={lightColor}
-            intensity={0.1}
-            angle={1}
-            penumbra={1}
-            distance={30}
-            decay={2}
-            power={5}
+            intensity={0.05}
+            angle={0.8}
+            penumbra={0.8}
+            distance={25}
+            decay={1.5}
+            power={3}
             castShadow={false}
             target-position={[Math.cos(15.7) * 10, 0.9, Math.sin(16) * 10]}
           />
@@ -125,6 +134,7 @@ export default function Model(props) {
         <mesh
           geometry={nodes.Object_11.geometry}
           material={materials["Material.013"]}
+          frustumCulled={false}
         />
         <mesh
           geometry={nodes.Object_12.geometry}
