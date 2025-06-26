@@ -69,47 +69,38 @@ const gameboyShader = {
   `,
 };
 
-// Effect 3: God Rays Shader
-const GodRaysShader = {
+// Effect 3: Glitch Shader
+const glitchShader = {
   uniforms: {
     tDiffuse: { value: null },
-    lightPosition: { value: new THREE.Vector2(0.5, 0.5) },
-    exposure: { value: 0.6 },
-    decay: { value: 0.95 },
-    density: { value: 0.5 },
-    weight: { value: 0.4 },
-    samples: { value: 100 },
+    time: { value: 0.0 },
   },
   vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 ); }`,
   fragmentShader: `
     uniform sampler2D tDiffuse;
-    uniform vec2 lightPosition;
-    uniform float exposure;
-    uniform float decay;
-    uniform float density;
-    uniform float weight;
-    uniform int samples;
+    uniform float time;
     varying vec2 vUv;
 
-    const int MAX_SAMPLES = 100;
+    float random(vec2 st) {
+        return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
+    }
 
     void main() {
-      vec2 texCoord = vUv;
-      vec2 deltaTexCoord = texCoord - lightPosition;
-      deltaTexCoord *= 1.0 / float(samples) * density;
-      float illuminationDecay = 1.0;
-      vec4 color = texture2D(tDiffuse, texCoord);
+        vec2 uv = vUv;
+        float t = time * 2.0;
 
-      for (int i = 0; i < MAX_SAMPLES; i++) {
-        if (i >= samples) break;
-        texCoord -= deltaTexCoord;
-        vec4 sample = texture2D(tDiffuse, texCoord);
-        sample *= illuminationDecay * weight;
-        color += sample;
-        illuminationDecay *= decay;
-      }
+        // Glitch effect
+        float glitch = random(vec2(t, uv.y)) * 0.1;
+        if (random(vec2(t, 1.0)) > 0.95) {
+            uv.x += glitch;
+        }
 
-      gl_FragColor = color * exposure;
+        vec4 color = texture2D(tDiffuse, uv);
+        
+        // To black and white
+        float gray = dot(color.rgb, vec3(0.299, 0.587, 0.114));
+        
+        gl_FragColor = vec4(vec3(gray), 1.0);
     }
   `
 };
@@ -145,7 +136,7 @@ export function Effects({ currentSongIndex, shaderColor }) {
   const { gl, scene, camera, clock } = useThree();
   const composer = useRef();
   const gameboyPass = useRef();
-  const godRaysPass = useRef();
+  const watercolorPass = useRef();
   const ripplePass = useRef();
 
   // Update gameboy shader tint color when prop changes
@@ -166,7 +157,7 @@ export function Effects({ currentSongIndex, shaderColor }) {
 
     const effectIndex = currentSongIndex % 5;
     gameboyPass.current = null; // Reset ref
-    godRaysPass.current = null;
+    watercolorPass.current = null;
     ripplePass.current = null;
 
     // Effect 0: Bloom and Film
@@ -190,10 +181,10 @@ export function Effects({ currentSongIndex, shaderColor }) {
       gameboyPass.current = pass;
       effectComposer.addPass(pass);
     } 
-    // Effect 3: God Rays
+    // Effect 3: Glitch
     else if (effectIndex === 3) {
-      const pass = new ShaderPass(GodRaysShader);
-      godRaysPass.current = pass;
+      const pass = new ShaderPass(glitchShader);
+      watercolorPass.current = pass;
       effectComposer.addPass(pass);
     } 
     // Effect 4: Ripple
@@ -230,9 +221,8 @@ export function Effects({ currentSongIndex, shaderColor }) {
   useFrame((state, delta) => {
     if (composer.current) {
       const { clock } = state;
-      if (godRaysPass.current) {
-        godRaysPass.current.uniforms.lightPosition.value.x = 0.5 + Math.sin(clock.getElapsedTime() * 0.5) * 0.2;
-        godRaysPass.current.uniforms.lightPosition.value.y = 0.5 + Math.cos(clock.getElapsedTime() * 0.5) * 0.2;
+      if (watercolorPass.current) {
+        watercolorPass.current.uniforms.time.value = clock.getElapsedTime();
       }
       if (ripplePass.current) {
         ripplePass.current.uniforms.time.value = clock.getElapsedTime();
