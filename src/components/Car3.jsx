@@ -1,9 +1,10 @@
 import React, { useRef, useCallback } from "react";
-import { useGLTF } from "@react-three/drei";
+import { useGLTF, SpotLight } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 
 export default function Model(props) {
   const { nodes, materials } = useGLTF("/car3/scene.gltf");
+  const { lightColor = "#ffffff" } = props;
 
   const wheelRefs = {
     frontRight: useRef(),

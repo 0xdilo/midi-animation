@@ -6,7 +6,13 @@ import { FaGlobe, FaInstagram, FaBandcamp } from "react-icons/fa";
 
 // Static cover paths, assuming order matches serverTracks from server
 // If serverTracks has more items than this array, covers will cycle.
-const albumCovers = ["/album.png", "/album2.png", "/album3.png"];
+const albumCovers = [
+  "/album.png",
+  "/album2.png",
+  "/album3.png",
+  "album4.png",
+  "album5.png",
+];
 
 export default function Menu({
   menuOpen,

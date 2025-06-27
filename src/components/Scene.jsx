@@ -245,8 +245,8 @@ export function Scene({
         )}
         {currentCarIndex % 5 === 4 && (
           <MainCar4
-            position={[0, -0.6, -5]}
-            rotation={[0, -Math.PI / 2, 0]}
+            position={[0, -1.1, -5]}
+            rotation={[0, -Math.PI * 2, 0]}
             lightColor={lightColor}
           />
         )}

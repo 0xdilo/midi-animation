@@ -1,9 +1,26 @@
-import React, { useRef, useCallback } from "react";
-import { useGLTF } from "@react-three/drei";
+import React, { useRef, useCallback, useMemo } from "react";
+import { useGLTF, SpotLight } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
+import * as THREE from "three";
 
 export default function Model(props) {
   const { nodes, materials } = useGLTF("/car5/scene.gltf");
+  const { lightColor = "#ffffff" } = props;
+
+  // Create glowing headlight material
+  const headlightMaterial = useMemo(() => {
+    return new THREE.MeshPhysicalMaterial({
+      color: lightColor,
+      emissive: lightColor,
+      emissiveIntensity: 3.5,
+      transparent: true,
+      opacity: 0.85,
+      metalness: 0,
+      roughness: 0,
+      transmission: 0.9,
+      toneMapped: false,
+    });
+  }, [lightColor]);
 
   // Create refs for each wheel group
   const wheelRefs = {
@@ -436,6 +453,34 @@ export default function Model(props) {
           <mesh
             geometry={nodes.Clines_6_Lines_0.geometry}
             material={materials.Lines}
+          />
+        </group>
+
+        {/* Headlights */}
+        <group position={[-0.65, -0.6, 1.9]}>
+          <SpotLight
+            color={lightColor}
+            intensity={0.05}
+            angle={0.8}
+            penumbra={0.8}
+            distance={25}
+            decay={1.5}
+            power={3}
+            castShadow={false}
+            target-position={[Math.cos(15.7) * 10, -1, Math.sin(16.4) * 10]}
+          />
+        </group>
+        <group position={[0.65, -0.6, 1.9]}>
+          <SpotLight
+            color={lightColor}
+            intensity={0.05}
+            angle={0.8}
+            penumbra={0.8}
+            distance={25}
+            decay={1.5}
+            power={3}
+            castShadow={false}
+            target-position={[Math.cos(15.7) * 10, -1, -4]}
           />
         </group>
       </group>

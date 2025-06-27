@@ -1,11 +1,14 @@
-import React, { useRef, useCallback } from "react";
-import { useGLTF, useAnimations } from "@react-three/drei";
+import React, { useRef, useCallback, useMemo } from "react";
+import { useGLTF, useAnimations, SpotLight } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
+import { GeometryOptimizer } from "../utils/GeometryOptimizer";
+import * as THREE from "three";
 
 export default function Model(props) {
   const group = useRef();
   const { nodes, materials, animations } = useGLTF("/car2/scene.gltf");
   const { actions } = useAnimations(animations, group);
+  const { lightColor = "#ffffff" } = props;
 
   // Create refs for all wheel groups
   const wheelRefs = {

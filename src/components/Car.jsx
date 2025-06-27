@@ -2,6 +2,7 @@ import React, { useRef, useMemo, useEffect, useCallback } from "react";
 import { SpotLight, useGLTF } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
+import { GeometryOptimizer } from "../utils/GeometryOptimizer";
 
 export default function Model(props) {
   const { nodes, materials } = useGLTF("/car/scene.gltf");

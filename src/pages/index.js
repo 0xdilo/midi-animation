@@ -1,5 +1,6 @@
 import { Canvas } from "@react-three/fiber";
 import { useCallback, useEffect, useRef, useState, useMemo } from "react";
+import { MemoryManager } from "../utils/MemoryManager";
 import io from "socket.io-client";
 import { Effects } from "../components/Effects";
 import { Scene } from "../components/Scene";
@@ -85,7 +86,9 @@ export default function Home() {
     const track = event.track > 1 ? 1 : event.track;
     const isNoteOn = event.name === "Note on";
     const intensity = isNoteOn ? event.velocity / 127 : 0;
-    const shakeTrigger = isNoteOn && track === 1;
+    
+    // For single-channel MIDI (track 0), enable both lights and vibrations
+    const shakeTrigger = isNoteOn && (track === 1 || track === 0);
 
     if (isNoteOn && track === 0) {
       const pair = colorPairs[Math.floor(Math.random() * colorPairs.length)];
@@ -104,10 +107,20 @@ export default function Home() {
       [track]: {
         value: isNoteOn ? 2 : 1,
         noteOn: isNoteOn,
-        intensity: track === 1 ? intensity : 0,
-        shakeTrigger: track === 1 ? shakeTrigger : false,
+        intensity: (track === 1 || track === 0) ? intensity : 0,
+        shakeTrigger: (track === 1 || track === 0) ? shakeTrigger : false,
       },
     }));
+  }, []);
+
+  // --- Memory management ---
+  useEffect(() => {
+    MemoryManager.startCleanupCycle();
+    MemoryManager.logMemoryUsage();
+
+    return () => {
+      MemoryManager.stopCleanupCycle();
+    };
   }, []);
 
   // --- Socket connection & handlers ---
@@ -128,6 +141,13 @@ export default function Home() {
     sock.on("trackStarted", (data) => {
       if (!audioRef.current) return;
       clearScheduledMidiEvents();
+      
+      // Reset instruments state to clear persistent vibrations
+      setInstruments({
+        0: { value: 1, noteOn: false, intensity: 0, shakeTrigger: false },
+        1: { value: 1, noteOn: false, intensity: 0, shakeTrigger: false },
+      });
+      
       setCurrentTrackTitle(data.title);
       const src = window.location.origin + data.audio;
       if (audioRef.current.src !== src) {
@@ -475,9 +495,13 @@ export default function Home() {
           alpha: false,
           preserveDrawingBuffer: false,
           failIfMajorPerformanceCaveat: true,
+          logarithmicDepthBuffer: true,
         }}
-        performance={{ min: 0.1 }}
+        performance={{ min: 0.5 }}
         frameloop="demand"
+        onCreated={({ gl }) => {
+          gl.compile = () => {}; // Disable shader compilation caching
+        }}
       >
         <directionalLight
           position={[-50, 20, 50]}
