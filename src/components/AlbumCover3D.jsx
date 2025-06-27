@@ -2,7 +2,8 @@ import { useFrame } from "@react-three/fiber";
 import { useRef } from "react";
 import { TextureLoader } from "three";
 
-export default function AlbumCover3D() {
+
+export default function AlbumCover3D({ onClick }) {
   const ref = useRef();
   const isDragging = useRef(false);
   const previousMousePosition = useRef({ x: 0, y: 0 });
@@ -19,6 +20,7 @@ export default function AlbumCover3D() {
       x: event.clientX || (event.touches && event.touches[0].clientX),
       y: event.clientY || (event.touches && event.touches[0].clientY),
     };
+    event.target.setPointerCapture(event.pointerId);
   };
 
   const handlePointerMove = (event) => {
@@ -32,16 +34,8 @@ export default function AlbumCover3D() {
     const deltaX = currentX - previousMousePosition.current.x;
     const deltaY = currentY - previousMousePosition.current.y;
 
-    // Normalize rotation to 0-2π range
-    const normalizedRotX =
-      ((rotation.current.x % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
-
-    // Check if we're in the "flipped" range (between π/2 and 3π/2)
-    const isFlipped =
-      normalizedRotX > Math.PI / 2 && normalizedRotX < (3 * Math.PI) / 2;
-
     velocity.current.x = deltaY * 0.01;
-    velocity.current.y = deltaX * 0.01 * (isFlipped ? -1 : 1);
+    velocity.current.y = deltaX * 0.01;
 
     rotation.current.y += velocity.current.y;
     rotation.current.x += velocity.current.x;
@@ -49,8 +43,12 @@ export default function AlbumCover3D() {
     previousMousePosition.current = { x: currentX, y: currentY };
   };
 
-  const handlePointerUp = () => {
+  const handlePointerUp = (event) => {
     isDragging.current = false;
+    event.target.releasePointerCapture(event.pointerId);
+    if (onClick) {
+      onClick();
+    }
   };
 
   useFrame((state, delta) => {
@@ -87,3 +85,4 @@ export default function AlbumCover3D() {
     </group>
   );
 }
+

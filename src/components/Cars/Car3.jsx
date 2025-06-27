@@ -7,58 +7,58 @@ export default function Model(props) {
   
   const optimizedMaterials = useMemo(() => ({
     bottom: new THREE.MeshLambertMaterial({ 
-      color: materials.bottom?.color || 0xffffff 
+      color: materials.bottom?.color || 0x333333 
     }),
     PaletteMaterial001: new THREE.MeshLambertMaterial({ 
-      color: materials.PaletteMaterial001?.color || 0xffffff 
+      color: materials.PaletteMaterial001?.color || 0x222222 
     }),
     wheel: new THREE.MeshLambertMaterial({ 
-      color: materials.wheel?.color || 0xffffff 
+      color: materials.wheel?.color || 0x444444 
     }),
     PaletteMaterial002: new THREE.MeshLambertMaterial({ 
-      color: materials.PaletteMaterial002?.color || 0xffffff 
+      color: materials.PaletteMaterial002?.color || 0x555555 
     }),
     Licence_Plate: new THREE.MeshLambertMaterial({ 
-      color: materials.Licence_Plate?.color || 0xffffff 
+      color: materials.Licence_Plate?.color || 0xffffcc 
     }),
     Livery: new THREE.MeshLambertMaterial({ 
-      color: materials.Livery?.color || 0xffffff 
+      color: materials.Livery?.color || 0x00aa00 
     }),
     engine_bay: new THREE.MeshLambertMaterial({ 
-      color: materials.engine_bay?.color || 0xffffff 
+      color: materials.engine_bay?.color || 0x444444 
     }),
     material: new THREE.MeshLambertMaterial({ 
-      color: materials.material?.color || 0xffffff 
+      color: materials.material?.color || 0x666666 
     }),
     exhaust: new THREE.MeshLambertMaterial({ 
-      color: materials.exhaust?.color || 0xffffff 
+      color: materials.exhaust?.color || 0x888888 
     }),
     front_spoiler: new THREE.MeshLambertMaterial({ 
-      color: materials.front_spoiler?.color || 0xffffff 
+      color: materials.front_spoiler?.color || 0x333333 
     }),
     Brake_Disc: new THREE.MeshLambertMaterial({ 
-      color: materials.Brake_Disc?.color || 0xffffff 
+      color: materials.Brake_Disc?.color || 0x666666 
     }),
     Brake_Caliper: new THREE.MeshLambertMaterial({ 
-      color: materials.Brake_Caliper?.color || 0xffffff 
+      color: materials.Brake_Caliper?.color || 0xff4444 
     }),
     Glass: new THREE.MeshLambertMaterial({ 
-      color: materials.Glass?.color || 0xffffff 
+      color: materials.Glass?.color || 0x88ccff 
     }),
     headlights: new THREE.MeshLambertMaterial({ 
-      color: materials.headlights?.color || 0xffffff 
+      color: materials.headlights?.color || 0xffffcc 
     }),
     PaletteMaterial003: new THREE.MeshLambertMaterial({ 
-      color: materials.PaletteMaterial003?.color || 0xffffff 
+      color: materials.PaletteMaterial003?.color || 0x333333 
     }),
     radiator: new THREE.MeshLambertMaterial({ 
-      color: materials.radiator?.color || 0xffffff 
+      color: materials.radiator?.color || 0x666666 
     }),
     Spoiler: new THREE.MeshLambertMaterial({ 
-      color: materials.Spoiler?.color || 0xffffff 
+      color: materials.Spoiler?.color || 0x333333 
     }),
     Tail_Lights: new THREE.MeshLambertMaterial({ 
-      color: materials.Tail_Lights?.color || 0xffffff 
+      color: materials.Tail_Lights?.color || 0xff3333 
     })
   }), [materials])
   

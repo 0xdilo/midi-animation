@@ -7,13 +7,13 @@ export default function Model(props) {
   
   const optimizedMaterials = useMemo(() => ({
     PaletteMaterial001: new THREE.MeshLambertMaterial({ 
-      color: materials.PaletteMaterial001?.color || 0xffffff 
+      color: materials.PaletteMaterial001?.color || 0x4444ff 
     }),
     PaletteMaterial002: new THREE.MeshLambertMaterial({ 
-      color: materials.PaletteMaterial002?.color || 0xffffff 
+      color: materials.PaletteMaterial002?.color || 0x333333 
     }),
     material: new THREE.MeshLambertMaterial({ 
-      color: materials.material?.color || 0xffffff 
+      color: materials.material?.color || 0x666666 
     })
   }), [materials])
   

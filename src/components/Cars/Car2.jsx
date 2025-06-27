@@ -7,22 +7,22 @@ export default function Model(props) {
   
   const optimizedMaterials = useMemo(() => ({
     logo_tex: new THREE.MeshLambertMaterial({ 
-      color: materials.logo_tex?.color || 0xffffff 
+      color: materials.logo_tex?.color || 0x333333 
     }),
     paint: new THREE.MeshLambertMaterial({ 
-      color: materials.paint?.color || 0xffffff 
+      color: materials.paint?.color || 0xff4444 
     }),
     PaletteMaterial001: new THREE.MeshLambertMaterial({ 
-      color: materials.PaletteMaterial001?.color || 0xffffff 
+      color: materials.PaletteMaterial001?.color || 0x222222 
     }),
     PaletteMaterial002: new THREE.MeshLambertMaterial({ 
-      color: materials.PaletteMaterial002?.color || 0xffffff 
+      color: materials.PaletteMaterial002?.color || 0x88ccff 
     }),
     number: new THREE.MeshLambertMaterial({ 
-      color: materials.number?.color || 0xffffff 
+      color: materials.number?.color || 0xffff00 
     }),
     wheel_metal: new THREE.MeshLambertMaterial({ 
-      color: materials.wheel_metal?.color || 0xffffff 
+      color: materials.wheel_metal?.color || 0x666666 
     })
   }), [materials])
   

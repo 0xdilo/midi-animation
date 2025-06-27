@@ -312,6 +312,7 @@ export default function Home() {
             bottom: "20px",
             left: "50%",
             transform: "translateX(-50%)",
+            "-webkit-transform": "translateX(-50%)",
             zIndex: 20,
             padding: "15px 30px",
             background: "rgba(0,0,0,0.7)",
@@ -357,7 +358,7 @@ export default function Home() {
             camera={{ position: [0, 0, 8], fov: 60 }}
             style={{ width: "100%", height: "100%" }}
           >
-            <AlbumCover3D onClick={handleFirstStart} />
+            <AlbumCover3D />
             <Html
               center
               position={[0, -3, 0]}
