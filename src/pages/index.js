@@ -92,7 +92,12 @@ export default function Home() {
 
     if (isNoteOn && track === 0) {
       const pair = colorPairs[Math.floor(Math.random() * colorPairs.length)];
-      setLightColor({ scene: pair.scene, directional: pair.light });
+      // For song 1 (CRUISIN-V1), only trigger car lights, not scene lights
+      if (currentSongIndexRef.current === 0) {
+        setLightColor(prev => ({ ...prev, directional: pair.light }));
+      } else {
+        setLightColor({ scene: pair.scene, directional: pair.light });
+      }
     }
 
     if (isNoteOn && currentSongIndexRef.current % 5 === 2) {
