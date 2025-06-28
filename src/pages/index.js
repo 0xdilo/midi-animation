@@ -42,6 +42,7 @@ export default function Home() {
   const [currentSongIndex, setCurrentSongIndex] = useState(0);
   const [shaderColor, setShaderColor] = useState("rgb(255, 255, 255)");
   const [startClicked, setStartClicked] = useState(false);
+  const [cameraData, setCameraData] = useState({ position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 } });
 
   // --- Refs ---
   const audioRef = useRef(null);
@@ -559,12 +560,13 @@ export default function Home() {
           play={play}
           currentCarIndex={currentCarIndex}
           lastPausedPosition={lastPausedPosition}
+          updateCameraData={setCameraData}
         />
         <Effects
           currentSongIndex={currentSongIndex}
           shaderColor={shaderColor}
         />
-        <PerformanceMonitor />
+        <PerformanceMonitor cameraData={cameraData} />
       </Canvas>
     </div>
   );

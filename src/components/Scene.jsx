@@ -77,6 +77,7 @@ export function Scene({
   instruments,
   currentCarIndex,
   lastPausedPosition,
+  updateCameraData,
 }) {
   const { camera } = useThree();
   const groupRef = useRef();
@@ -159,6 +160,16 @@ export function Scene({
     // Make sure controls are updated
     if (controlsRef.current) {
       controlsRef.current.update();
+      const { x, y, z } = camera.position;
+      const polarAngle = controlsRef.current?.getPolarAngle();
+      const azimuthalAngle = controlsRef.current?.getAzimuthalAngle();
+      updateCameraData({
+        position: { x: x.toFixed(2), y: y.toFixed(2), z: z.toFixed(2) },
+        rotation: {
+          polar: polarAngle?.toFixed(2),
+          azimuthal: azimuthalAngle?.toFixed(2),
+        },
+      });
     }
 
     // Optimized opposite cars logic with object pooling
@@ -262,9 +273,16 @@ export function Scene({
       </group>
 
       <OrbitControls
+        ref={controlsRef}
         position={[0, 0, 10]}
         target={[-3, 0, -5]}
         enablePan={false}
+        minDistance={5}
+        maxDistance={30}
+        minPolarAngle={Math.PI / 4}
+        maxPolarAngle={Math.PI / 2}
+        minAzimuthAngle={-Math.PI / 3.3}
+        maxAzimuthAngle={Math.PI / 3.3}
       />
 
       {oppositeCars.map((car) => {

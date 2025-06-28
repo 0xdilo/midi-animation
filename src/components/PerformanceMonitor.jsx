@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 
-export function PerformanceMonitor({ onUpdate }) {
+export function PerformanceMonitor({ onUpdate, cameraData }) {
   const [fps, setFps] = useState(0);
   const [memory, setMemory] = useState({ used: 0, total: 0 });
   const frameCount = useRef(0);
@@ -70,6 +70,8 @@ export function PerformanceMonitor({ onUpdate }) {
         <div>Textures: {gl.info.memory.textures}</div>
         <div>Draw Calls: {gl.info.render.calls}</div>
         <div>Triangles: {gl.info.render.triangles.toLocaleString()}</div>
+        <div>Camera Position: X: {cameraData?.position.x}, Y: {cameraData?.position.y}, Z: {cameraData?.position.z}</div>
+        <div>Camera Rotation: Polar: {cameraData?.rotation.polar}, Azimuthal: {cameraData?.rotation.azimuthal}</div>
       </Html>
     );
   }
