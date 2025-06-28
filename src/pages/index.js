@@ -43,6 +43,7 @@ export default function Home() {
   const [shaderColor, setShaderColor] = useState("rgb(255, 255, 255)");
   const [startClicked, setStartClicked] = useState(false);
   const [cameraData, setCameraData] = useState({ position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 } });
+  const [isInteracting, setIsInteracting] = useState(false);
 
   // --- Refs ---
   const audioRef = useRef(null);
@@ -561,6 +562,8 @@ export default function Home() {
           currentCarIndex={currentCarIndex}
           lastPausedPosition={lastPausedPosition}
           updateCameraData={setCameraData}
+          isInteracting={isInteracting}
+          setIsInteracting={setIsInteracting}
         />
         <Effects
           currentSongIndex={currentSongIndex}

@@ -78,14 +78,17 @@ export function Scene({
   currentCarIndex,
   lastPausedPosition,
   updateCameraData,
+  isInteracting,
+  setIsInteracting,
 }) {
-  const { camera } = useThree();
+  const { camera, clock } = useThree();
   const groupRef = useRef();
   const currentSpeedRef = useRef(0);
   const startTimeRef = useRef(null);
   const shakeIntensity = useRef(0);
   const controlsRef = useRef();
   const lastPositionRef = useRef(null);
+  const lastInteractionTime = useRef(0);
 
   // State for spawned cars with object pooling
   const [oppositeCars, setOppositeCars] = useState([]);
@@ -155,6 +158,17 @@ export function Scene({
       camera.position.y += shakeY;
       shakeIntensity.current *= 0.9;
       if (shakeIntensity.current < 0.01) shakeIntensity.current = 0;
+    }
+
+    // Automatic camera movement
+    if (controlsRef.current && !isInteracting) {
+      const elapsedTime = clock.getElapsedTime();
+      if (elapsedTime - lastInteractionTime.current > 2) {
+        const currentAngle = controlsRef.current.getAzimuthalAngle();
+        const targetAngle = Math.sin(elapsedTime * 0.2) * (Math.PI / 8);
+        const smoothedAngle = currentAngle + (targetAngle - currentAngle) * 0.01;
+        controlsRef.current.setAzimuthalAngle(smoothedAngle);
+      }
     }
 
     // Make sure controls are updated
@@ -277,12 +291,19 @@ export function Scene({
         position={[0, 0, 10]}
         target={[-3, 0, -5]}
         enablePan={false}
-        minDistance={5}
-        maxDistance={30}
+        minDistance={10}
+        maxDistance={50}
         minPolarAngle={Math.PI / 4}
         maxPolarAngle={Math.PI / 2}
-        minAzimuthAngle={-Math.PI / 3.3}
-        maxAzimuthAngle={Math.PI / 3.3}
+        minAzimuthAngle={-Math.PI / 4}
+        maxAzimuthAngle={Math.PI / 4}
+        onStart={() => {
+          setIsInteracting(true);
+          lastInteractionTime.current = clock.getElapsedTime();
+        }}
+        onEnd={() => {
+          setIsInteracting(false);
+        }}
       />
 
       {oppositeCars.map((car) => {
