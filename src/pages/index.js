@@ -99,6 +99,12 @@ export default function Home() {
         setLightColor({ scene: pair.scene, directional: pair.light });
       }
     }
+    
+    // Ensure car lights respond to all MIDI tracks, not just track 0
+    if (isNoteOn && (track === 1 || track === 0)) {
+      const pair = colorPairs[Math.floor(Math.random() * colorPairs.length)];
+      setLightColor(prev => ({ ...prev, directional: pair.light }));
+    }
 
     if (isNoteOn && currentSongIndexRef.current % 5 === 2) {
       const hue = (event.noteNumber * 10) % 360;
@@ -171,6 +177,23 @@ export default function Home() {
         .catch(() => {
           setPlay(false);
         });
+        
+      // Add event listener for when song ends to auto-play next
+      const handleSongEnd = () => {
+        if (serverTracks.length > 0) {
+          const currentIndex = serverTracks.findIndex(t => t.title === currentTrackTitleRef.current);
+          const nextIndex = (currentIndex + 1) % serverTracks.length;
+          const nextTrack = serverTracks[nextIndex];
+          if (nextTrack && sock.connected) {
+            sock.emit("playTrack", nextTrack.title, { resumeFrom: 0 });
+          }
+        }
+      };
+      
+      if (audioRef.current) {
+        audioRef.current.removeEventListener('ended', handleSongEnd);
+        audioRef.current.addEventListener('ended', handleSongEnd);
+      }
     });
 
     sock.on("trackStopped", (data) => {
@@ -216,6 +239,9 @@ export default function Home() {
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current.src = "";
+        // Clean up auto-play event listener
+        const dummyHandler = () => {};
+        audioRef.current.removeEventListener('ended', dummyHandler);
       }
     };
   }, [clearScheduledMidiEvents, handleMidiEventVisuals]);
@@ -238,6 +264,20 @@ export default function Home() {
     if (!audioRef.current) {
       audioRef.current = new Audio();
       audioRef.current.volume = 0.8;
+      
+      // Add auto-play next song functionality
+      const handleSongEnd = () => {
+        if (serverTracks.length > 0) {
+          const currentIndex = serverTracks.findIndex(t => t.title === currentTrackTitleRef.current);
+          const nextIndex = (currentIndex + 1) % serverTracks.length;
+          const nextTrack = serverTracks[nextIndex];
+          if (nextTrack && socket?.connected) {
+            socket.emit("playTrack", nextTrack.title, { resumeFrom: 0 });
+          }
+        }
+      };
+      
+      audioRef.current.addEventListener('ended', handleSongEnd);
     }
     audioPausedTimeRef.current = 0;
     socket.emit("playTrack", first.title, { resumeFrom: 0 });
@@ -337,7 +377,7 @@ export default function Home() {
             bottom: "20px",
             left: "50%",
             transform: "translateX(-50%)",
-            "-webkit-transform": "translateX(-50%)",
+            WebkitTransform: "translateX(-50%)",
             zIndex: 20,
             padding: "15px 30px",
             background: "rgba(0,0,0,0.7)",

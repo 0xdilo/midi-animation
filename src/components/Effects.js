@@ -33,13 +33,21 @@ const gameboyShader = {
     gbResolution: { value: new THREE.Vector2(160, 144) },
     palette: {
       value: [
-        0.73, 0.88, 0.59, // lightest
-        0.51, 0.69, 0.36, // light
-        0.31, 0.48, 0.21, // dark
-        0.15, 0.28, 0.13  // darkest
-      ]
+        0.73,
+        0.88,
+        0.59, // lightest
+        0.51,
+        0.69,
+        0.36, // light
+        0.31,
+        0.48,
+        0.21, // dark
+        0.15,
+        0.28,
+        0.13, // darkest
+      ],
     },
-    tintColor: { value: new THREE.Color(1.0, 1.0, 1.0) } // Default: No tint
+    tintColor: { value: new THREE.Color(1.0, 1.0, 1.0) }, // Default: No tint
   },
   vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
   fragmentShader: `
@@ -89,20 +97,39 @@ const glitchShader = {
         vec2 uv = vUv;
         float t = time * 2.0;
 
-        // Glitch effect
-        float glitch = random(vec2(t, uv.y)) * 0.1;
-        if (random(vec2(t, 1.0)) > 0.95) {
-            uv.x += glitch;
-        }
-
         vec4 color = texture2D(tDiffuse, uv);
         
-        // To black and white
-        float gray = dot(color.rgb, vec3(0.299, 0.587, 0.114));
+        // Calculate brightness/luminance
+        float luminance = dot(color.rgb, vec3(0.299, 0.587, 0.114));
         
-        gl_FragColor = vec4(vec3(gray), 1.0);
+        // Detect colored areas more aggressively to preserve both materials and light cones
+        float maxColor = max(color.r, max(color.g, color.b));
+        float minColor = min(color.r, min(color.g, color.b));
+        float colorSaturation = (maxColor - minColor) / (maxColor + 0.001);
+        
+        // Preserve bright areas OR highly saturated areas (lights and light cones)
+        float brightThreshold = 0.4; // Threshold for very bright areas (light materials)
+        float saturationThreshold = 1.0; // Higher threshold for colored areas (light cones)
+        
+        // Check for very bright areas (emissive materials)
+        float brightnessPreservation = smoothstep(brightThreshold - 0.1, brightThreshold + 0.1, luminance);
+        
+        // Check for colored areas even if not super bright (light cones)
+        float saturationPreservation = smoothstep(saturationThreshold - 0.05, saturationThreshold + 0.05, colorSaturation);
+        
+        // Use OR logic - preserve if either bright OR colored
+        float colorPreservation = max(brightnessPreservation, saturationPreservation);
+        
+        // Convert to grayscale
+        float gray = luminance;
+        vec3 grayColor = vec3(gray);
+        
+        // Mix between grayscale and original color based on brightness
+        vec3 finalColor = mix(grayColor, color.rgb, colorPreservation);
+        
+        gl_FragColor = vec4(finalColor, 1.0);
     }
-  `
+  `,
 };
 
 // Effect 4: Ripple Shader
@@ -128,9 +155,8 @@ const RippleShader = {
       p.y += ripple;
       gl_FragColor = texture2D(tDiffuse, p);
     }
-  `
+  `,
 };
-
 
 export function Effects({ currentSongIndex, shaderColor }) {
   const { gl, scene, camera, clock } = useThree();
@@ -162,31 +188,37 @@ export function Effects({ currentSongIndex, shaderColor }) {
 
     // Effect 0: Bloom and Film
     if (effectIndex === 0) {
-      const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.5, 0.4, 0.85);
+      const bloomPass = new UnrealBloomPass(
+        new THREE.Vector2(window.innerWidth, window.innerHeight),
+        0.5,
+        0.4,
+        0.85,
+      );
       effectComposer.addPass(bloomPass);
       const filmPass = new FilmPass(1.35, 0.025, 648, false);
       effectComposer.addPass(filmPass);
-    } 
+    }
     // Effect 1: Cartoon
     else if (effectIndex === 1) {
       const cartoonPass = new ShaderPass(cartoonShader);
       effectComposer.addPass(cartoonPass);
-    } 
+    }
     // Effect 2: Gameboy
     else if (effectIndex === 2) {
       const pass = new ShaderPass(gameboyShader);
-      if (pass.uniforms.tintColor) { // Check if uniform exists
+      if (pass.uniforms.tintColor) {
+        // Check if uniform exists
         pass.uniforms.tintColor.value.set(shaderColor);
       }
       gameboyPass.current = pass;
       effectComposer.addPass(pass);
-    } 
+    }
     // Effect 3: Glitch
     else if (effectIndex === 3) {
       const pass = new ShaderPass(glitchShader);
       watercolorPass.current = pass;
       effectComposer.addPass(pass);
-    } 
+    }
     // Effect 4: Ripple
     else if (effectIndex === 4) {
       const pass = new ShaderPass(RippleShader);
@@ -200,8 +232,10 @@ export function Effects({ currentSongIndex, shaderColor }) {
       effectComposer.setSize(window.innerWidth, window.innerHeight);
       const pass = effectComposer.passes[1];
       if (pass && pass.uniforms && pass.uniforms.resolution) {
-          pass.uniforms.resolution.value.x = window.innerWidth * window.devicePixelRatio;
-          pass.uniforms.resolution.value.y = window.innerHeight * window.devicePixelRatio;
+        pass.uniforms.resolution.value.x =
+          window.innerWidth * window.devicePixelRatio;
+        pass.uniforms.resolution.value.y =
+          window.innerHeight * window.devicePixelRatio;
       }
     };
     window.addEventListener("resize", handleResize);
@@ -209,11 +243,13 @@ export function Effects({ currentSongIndex, shaderColor }) {
     return () => {
       window.removeEventListener("resize", handleResize);
       if (composer.current) {
-        composer.current.passes.forEach(pass => {
+        composer.current.passes.forEach((pass) => {
           if (pass.dispose) pass.dispose();
         });
-        if (composer.current.renderTarget1) composer.current.renderTarget1.dispose();
-        if (composer.current.renderTarget2) composer.current.renderTarget2.dispose();
+        if (composer.current.renderTarget1)
+          composer.current.renderTarget1.dispose();
+        if (composer.current.renderTarget2)
+          composer.current.renderTarget2.dispose();
       }
     };
   }, [gl, scene, camera, currentSongIndex, shaderColor]);

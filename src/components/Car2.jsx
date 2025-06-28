@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, useMemo } from "react";
+import React, { useRef, useCallback, useMemo, useEffect } from "react";
 import { useGLTF, useAnimations, SpotLight } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { GeometryOptimizer } from "../utils/GeometryOptimizer";
@@ -9,6 +9,34 @@ export default function Model(props) {
   const { nodes, materials, animations } = useGLTF("/car2/scene.gltf");
   const { actions } = useAnimations(animations, group);
   const { lightColor = "#ffffff" } = props;
+
+  // Create glowing materials for the headlights
+  const [lightMaterial1, lightMaterial2] = useMemo(() => {
+    const material1 = new THREE.MeshPhysicalMaterial({
+      color: lightColor,
+      emissive: lightColor,
+      emissiveIntensity: 4,
+      transparent: true,
+      opacity: 0.9,
+      metalness: 0,
+      roughness: 0,
+      transmission: 0.8,
+      clearcoat: 1,
+      toneMapped: false,
+    });
+
+    const material2 = material1.clone();
+    
+    return [material1, material2];
+  }, [lightColor]);
+
+  // Add cleanup for materials when component unmounts
+  useEffect(() => {
+    return () => {
+      lightMaterial1.dispose();
+      lightMaterial2.dispose();
+    };
+  }, [lightMaterial1, lightMaterial2]);
 
   // Create refs for all wheel groups
   const wheelRefs = {
@@ -67,7 +95,7 @@ export default function Model(props) {
                 <mesh
                   name="Object_15"
                   geometry={nodes.Object_15.geometry}
-                  material={materials["Material.013"]}
+                  material={lightMaterial1}
                   frustumCulled={false}
                 />
               </group>
@@ -163,7 +191,7 @@ export default function Model(props) {
                 <mesh
                   name="Object_25"
                   geometry={nodes.Object_25.geometry}
-                  material={materials["Material.010"]}
+                  material={lightMaterial1}
                   frustumCulled={false}
                 />
               </group>
@@ -176,7 +204,7 @@ export default function Model(props) {
                 <mesh
                   name="Object_27"
                   geometry={nodes.Object_27.geometry}
-                  material={materials["Material.010"]}
+                  material={lightMaterial2}
                   frustumCulled={false}
                 />
               </group>
@@ -345,6 +373,32 @@ export default function Model(props) {
             </group>
           </group>
         </group>
+      </group>
+      <group position={[-1.1, -0.6, 3.9]}>
+        <SpotLight
+          color={lightColor}
+          intensity={0.05}
+          angle={0.8}
+          penumbra={0.8}
+          distance={25}
+          decay={1.5}
+          power={3}
+          castShadow={false}
+          target-position={[Math.cos(15.7) * 10, 0, Math.sin(16.4) * 10]}
+        />
+      </group>
+      <group position={[1.1, -0.6, 3.9]}>
+        <SpotLight
+          color={lightColor}
+          intensity={0.05}
+          angle={0.8}
+          penumbra={0.8}
+          distance={25}
+          decay={1.5}
+          power={3}
+          castShadow={false}
+          target-position={[Math.cos(15.7) * 10, 0, -4]}
+        />
       </group>
     </group>
   );

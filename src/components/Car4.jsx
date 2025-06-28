@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, useMemo } from "react";
+import React, { useRef, useCallback, useMemo, useEffect } from "react";
 import { useGLTF, SpotLight } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { GeometryOptimizer } from "../utils/GeometryOptimizer";
@@ -14,12 +14,12 @@ export default function Model(props) {
     frontRight: useRef(),
   };
 
-  // Create glowing headlight material
-  const headlightMaterial = useMemo(() => {
-    return new THREE.MeshPhysicalMaterial({
+  // Create glowing headlight materials
+  const [headlightMaterial, headlightMaterial2] = useMemo(() => {
+    const material1 = new THREE.MeshPhysicalMaterial({
       color: lightColor,
       emissive: lightColor,
-      emissiveIntensity: 3,
+      emissiveIntensity: 3.5,
       transparent: true,
       opacity: 0.8,
       metalness: 0,
@@ -27,6 +27,10 @@ export default function Model(props) {
       transmission: 0.8,
       toneMapped: false,
     });
+
+    const material2 = material1.clone();
+
+    return [material1, material2];
   }, [lightColor]);
 
   const updateWheels = useCallback((delta) => {
@@ -40,6 +44,14 @@ export default function Model(props) {
   useFrame((state, delta) => {
     updateWheels(delta);
   });
+
+  // Add cleanup for materials when component unmounts
+  useEffect(() => {
+    return () => {
+      headlightMaterial.dispose();
+      headlightMaterial2.dispose();
+    };
+  }, [headlightMaterial, headlightMaterial2]);
   return (
     <group {...props} dispose={null}>
       <group scale={0.03}>
@@ -50,7 +62,7 @@ export default function Model(props) {
         >
           <mesh
             geometry={nodes.body_glaaa_0.geometry}
-            material={materials.glaaa}
+            material={headlightMaterial}
           />
           <mesh
             geometry={nodes.body_Black_Metal_Paint_0.geometry}
@@ -202,7 +214,7 @@ export default function Model(props) {
           scale={62.361}
         />
       </group>
-      <group position={[-4.2, 0.2, -1]}>
+      <group position={[-4, 0.2, -1]}>
         <SpotLight
           color={lightColor}
           intensity={0.05}
@@ -215,7 +227,7 @@ export default function Model(props) {
           target-position={[Math.cos(15.7) * 10, 0, Math.sin(16.4) * 10]}
         />
       </group>
-      <group position={[-4.2, 0.2, 1]}>
+      <group position={[-4, 0.2, 1]}>
         <SpotLight
           color={lightColor}
           intensity={0.05}

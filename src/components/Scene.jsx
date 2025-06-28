@@ -1,14 +1,14 @@
 import { useFrame, useThree } from "@react-three/fiber";
 import { useRef, useState, useMemo, useCallback } from "react";
 import { OrbitControls } from "@react-three/drei";
-import { Suspense, lazy } from "react";
+import { Suspense } from "react";
 import * as THREE from "three";
 
-const MainCar = lazy(() => import("./Car"));
-const MainCar2 = lazy(() => import("./Car2"));
-const MainCar3 = lazy(() => import("./Car3"));
-const MainCar4 = lazy(() => import("./Car4"));
-const MainCar5 = lazy(() => import("./Car5"));
+import MainCar from "./Car";
+import MainCar2 from "./Car2";
+import MainCar3 from "./Car3";
+import MainCar4 from "./Car4";
+import MainCar5 from "./Car5";
 
 import City from "./City";
 import Car1 from "./Cars/Car1.jsx";
@@ -214,43 +214,41 @@ export function Scene({
         decay={2}
       />
 
-      <Suspense fallback={null}>
-        {currentCarIndex % 5 === 0 && (
-          <MainCar
-            position={[0, 0, -5]}
-            rotation={[0, -Math.PI / 2, 0]}
-            lightColor={lightColor}
-          />
-        )}
-        {currentCarIndex % 5 === 1 && (
-          <MainCar2
-            position={[0, 0, -5]}
-            rotation={[0, -Math.PI / 2, 0]}
-            lightColor={lightColor}
-          />
-        )}
-        {currentCarIndex % 5 === 2 && (
-          <MainCar3
-            position={[0, 0, -5]}
-            rotation={[0, -Math.PI / 2, 0]}
-            lightColor={lightColor}
-          />
-        )}
-        {currentCarIndex % 5 === 3 && (
-          <MainCar5
-            position={[0, -1, -5]}
-            rotation={[0, -Math.PI / 2, 0]}
-            lightColor={lightColor}
-          />
-        )}
-        {currentCarIndex % 5 === 4 && (
-          <MainCar4
-            position={[0, -1.1, -5]}
-            rotation={[0, -Math.PI * 2, 0]}
-            lightColor={lightColor}
-          />
-        )}
-      </Suspense>
+      {currentCarIndex % 5 === 0 && (
+        <MainCar
+          position={[0, 0, -5]}
+          rotation={[0, -Math.PI / 2, 0]}
+          lightColor={lightColor}
+        />
+      )}
+      {currentCarIndex % 5 === 1 && (
+        <MainCar2
+          position={[0, 0, -5]}
+          rotation={[0, -Math.PI / 2, 0]}
+          lightColor={lightColor}
+        />
+      )}
+      {currentCarIndex % 5 === 2 && (
+        <MainCar3
+          position={[0, 0, -5]}
+          rotation={[0, -Math.PI / 2, 0]}
+          lightColor={lightColor}
+        />
+      )}
+      {currentCarIndex % 5 === 3 && (
+        <MainCar5
+          position={[0, -1, -5]}
+          rotation={[0, -Math.PI / 2, 0]}
+          lightColor={lightColor}
+        />
+      )}
+      {currentCarIndex % 5 === 4 && (
+        <MainCar4
+          position={[0, -1.1, -5]}
+          rotation={[0, -Math.PI * 2, 0]}
+          lightColor={lightColor}
+        />
+      )}
 
       <group ref={groupRef}>
         {CITIES_CONFIG.map((city, index) => (

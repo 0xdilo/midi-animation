@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, useMemo } from "react";
+import React, { useRef, useCallback, useMemo, useEffect } from "react";
 import { useGLTF, SpotLight } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
@@ -7,9 +7,9 @@ export default function Model(props) {
   const { nodes, materials } = useGLTF("/car5/scene.gltf");
   const { lightColor = "#ffffff" } = props;
 
-  // Create glowing headlight material
-  const headlightMaterial = useMemo(() => {
-    return new THREE.MeshPhysicalMaterial({
+  // Create glowing headlight materials
+  const [headlightMaterial, headlightMaterial2] = useMemo(() => {
+    const material1 = new THREE.MeshPhysicalMaterial({
       color: lightColor,
       emissive: lightColor,
       emissiveIntensity: 3.5,
@@ -20,6 +20,10 @@ export default function Model(props) {
       transmission: 0.9,
       toneMapped: false,
     });
+
+    const material2 = material1.clone();
+
+    return [material1, material2];
   }, [lightColor]);
 
   // Create refs for each wheel group
@@ -44,6 +48,14 @@ export default function Model(props) {
   useFrame((state, delta) => {
     updateWheels(delta);
   });
+
+  // Add cleanup for materials when component unmounts
+  useEffect(() => {
+    return () => {
+      headlightMaterial.dispose();
+      headlightMaterial2.dispose();
+    };
+  }, [headlightMaterial, headlightMaterial2]);
 
   return (
     <group {...props} dispose={null}>
@@ -260,7 +272,7 @@ export default function Model(props) {
           />
           <mesh
             geometry={nodes.Light_D_CLight_D_0.geometry}
-            material={materials.CLight_D}
+            material={headlightMaterial}
           />
           <mesh
             geometry={nodes.BaDGES_MESH_Cbadges_0.geometry}
@@ -416,7 +428,7 @@ export default function Model(props) {
           />
           <mesh
             geometry={nodes.Front_Light_1_CLight_D_0.geometry}
-            material={materials.CLight_D}
+            material={headlightMaterial2}
           />
           <mesh
             geometry={nodes.Indicators_Light_Indicaros_0.geometry}
@@ -457,7 +469,7 @@ export default function Model(props) {
         </group>
 
         {/* Headlights */}
-        <group position={[-0.65, -0.6, 1.9]}>
+        <group position={[-0.6, -0.61, 1.7]}>
           <SpotLight
             color={lightColor}
             intensity={0.05}
@@ -470,7 +482,7 @@ export default function Model(props) {
             target-position={[Math.cos(15.7) * 10, -1, Math.sin(16.4) * 10]}
           />
         </group>
-        <group position={[0.65, -0.6, 1.9]}>
+        <group position={[0.6, -0.61, 1.7]}>
           <SpotLight
             color={lightColor}
             intensity={0.05}
