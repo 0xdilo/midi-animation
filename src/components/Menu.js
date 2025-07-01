@@ -124,8 +124,9 @@ export default function Menu({
         zIndex: isFirstStart ? -1 : 1000,
         display: isFirstStart ? "none" : "flex",
         flexDirection: "column",
-        justifyContent: windowSize.width <= 768 ? "space-between" : "space-evenly",
-        alignItems: "center", 
+        justifyContent:
+          windowSize.width <= 768 ? "space-between" : "space-evenly",
+        alignItems: "center",
         padding: windowSize.width <= 768 ? "8px 10px" : "20px",
         boxSizing: "border-box",
         overflow: "hidden", // No scrolling allowed
@@ -140,8 +141,10 @@ export default function Menu({
       {/* Album cover */}
       <div
         style={{
-          width: windowSize.width <= 768 ? "min(180px, 30vh)" : "min(500px, 50vh)",
-          height: windowSize.width <= 768 ? "min(180px, 30vh)" : "min(500px, 50vh)",
+          width:
+            windowSize.width <= 768 ? "min(500px, 50vh)" : "min(600px, 60vh)",
+          height:
+            windowSize.width <= 768 ? "min(500px, 50vh)" : "min(600px, 60vh)",
           marginBottom: windowSize.width <= 768 ? "5px" : "20px",
           marginTop: windowSize.width <= 768 ? "15px" : "0px",
           flexShrink: 0,
@@ -158,7 +161,6 @@ export default function Menu({
       <div
         style={{
           textAlign: "center",
-          marginBottom: windowSize.width <= 768 ? "5px" : "20px",
           color: "#fff",
           padding: "0 10px",
           flexShrink: 0,
@@ -166,7 +168,8 @@ export default function Menu({
       >
         <h2
           style={{
-            fontSize: windowSize.width <= 768 ? "12px" : "clamp(16px, 4vw, 24px)",
+            fontSize:
+              windowSize.width <= 768 ? "18px" : "clamp(16px, 4vw, 24px)",
             marginBottom: windowSize.width <= 768 ? "5px" : "10px",
             fontFamily: '"Press Start 2P", cursive',
             lineHeight: 1.2,
@@ -176,11 +179,16 @@ export default function Menu({
         >
           {currentAlbumDisplay?.title || "Loading Tracks..."}
         </h2>
-        <p style={{ 
-          fontSize: windowSize.width <= 768 ? "10px" : "clamp(12px, 3vw, 16px)", 
-          opacity: 0.8,
-          marginBottom: 0,
-        }}>
+        <p
+          style={{
+            fontSize:
+              windowSize.width <= 768 ? "7px" : "clamp(10px, 3vw, 10px)",
+            fontFamily: '"Press Start 2P", cursive',
+
+            opacity: 0.8,
+            marginBottom: 0,
+          }}
+        >
           {currentAlbumIndex + 1} / {albumData.length}
         </p>
       </div>
@@ -189,8 +197,7 @@ export default function Menu({
       <div
         style={{
           display: "flex",
-          gap: windowSize.width <= 768 ? "8px" : "15px",
-          marginBottom: windowSize.width <= 768 ? "5px" : "30px",
+          marginBottom: "30px",
           alignItems: "center",
           flexWrap: "wrap",
           justifyContent: "center",
@@ -208,8 +215,8 @@ export default function Menu({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            width: windowSize.width <= 768 ? "50px" : "60px",
-            height: windowSize.width <= 768 ? "50px" : "60px",
+            width: "60px",
+            height: "60px",
             transition: "color 0.2s ease",
           }}
           onMouseEnter={(e) => (e.currentTarget.style.color = "#FFDB58")}
@@ -240,7 +247,7 @@ export default function Menu({
         <button
           onClick={handlePlayToggle}
           style={{
-            padding: "15px",
+            padding: "10px",
             background: "rgba(0,0,0,0)",
             border: "2px solid #fff",
             color: "#fff",
@@ -249,8 +256,8 @@ export default function Menu({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            width: windowSize.width <= 768 ? "50px" : "60px",
-            height: windowSize.width <= 768 ? "50px" : "60px",
+            width: "60px",
+            height: "60px",
             transition: "color 0.2s ease, border-color 0.2s ease",
           }}
           onMouseEnter={(e) => {
@@ -307,8 +314,9 @@ export default function Menu({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            width: windowSize.width <= 768 ? "50px" : "60px",
-            height: windowSize.width <= 768 ? "50px" : "60px",
+            width: "60px",
+            height: "60px",
+
             transition: "color 0.2s ease",
           }}
           onMouseEnter={(e) => (e.currentTarget.style.color = "#FFDB58")}
@@ -357,51 +365,51 @@ export default function Menu({
             marginBottom: windowSize.width <= 768 ? "5px" : "10px",
           }}
         >
-        <a
-          href="https://twitter.com"
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{
-            color: "#fff",
-            fontSize: windowSize.width <= 768 ? "24px" : "30px",
-            textDecoration: "none",
-            transition: "color 0.2s ease",
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = "#FFDB58")}
-          onMouseLeave={(e) => (e.currentTarget.style.color = "#fff")}
-        >
-          <FaBandcamp />
-        </a>
-        <a
-          href="https://instagram.com"
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{
-            color: "#fff",
-            fontSize: windowSize.width <= 768 ? "24px" : "30px",
-            textDecoration: "none",
-            transition: "color 0.2s ease",
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = "#FFDB58")}
-          onMouseLeave={(e) => (e.currentTarget.style.color = "#fff")}
-        >
-          <FaInstagram />
-        </a>
-        <a
-          href="https://yourportfolio.com"
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{
-            color: "#fff",
-            fontSize: windowSize.width <= 768 ? "24px" : "30px",
-            textDecoration: "none",
-            transition: "color 0.2s ease",
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = "#FFDB58")}
-          onMouseLeave={(e) => (e.currentTarget.style.color = "#fff")}
-        >
-          <FaGlobe />
-        </a>
+          <a
+            href="https://twitter.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              color: "#fff",
+              fontSize: windowSize.width <= 768 ? "24px" : "30px",
+              textDecoration: "none",
+              transition: "color 0.2s ease",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = "#FFDB58")}
+            onMouseLeave={(e) => (e.currentTarget.style.color = "#fff")}
+          >
+            <FaBandcamp />
+          </a>
+          <a
+            href="https://instagram.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              color: "#fff",
+              fontSize: windowSize.width <= 768 ? "24px" : "30px",
+              textDecoration: "none",
+              transition: "color 0.2s ease",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = "#FFDB58")}
+            onMouseLeave={(e) => (e.currentTarget.style.color = "#fff")}
+          >
+            <FaInstagram />
+          </a>
+          <a
+            href="https://yourportfolio.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              color: "#fff",
+              fontSize: windowSize.width <= 768 ? "24px" : "30px",
+              textDecoration: "none",
+              transition: "color 0.2s ease",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = "#FFDB58")}
+            onMouseLeave={(e) => (e.currentTarget.style.color = "#fff")}
+          >
+            <FaGlobe />
+          </a>
         </div>
 
         {/* Download button */}
