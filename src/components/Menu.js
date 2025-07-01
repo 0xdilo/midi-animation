@@ -26,7 +26,7 @@ export default function Menu({
   const [isPlaying, setIsPlaying] = useState(false);
   const [windowSize, setWindowSize] = useState({ width: 0, height: 0 });
   const [isClosing, setIsClosing] = useState(false);
-  const iconSize = windowSize.width <= 768 ? 40 : 100;
+  const iconSize = windowSize.width <= 768 ? 50 : 100;
 
   useEffect(() => {
     if (audioControls) {
@@ -140,10 +140,10 @@ export default function Menu({
       {/* Album cover */}
       <div
         style={{
-          width: windowSize.width <= 768 ? "min(150px, 25vh)" : "min(500px, 50vh)",
-          height: windowSize.width <= 768 ? "min(150px, 25vh)" : "min(500px, 50vh)",
+          width: windowSize.width <= 768 ? "min(180px, 30vh)" : "min(500px, 50vh)",
+          height: windowSize.width <= 768 ? "min(180px, 30vh)" : "min(500px, 50vh)",
           marginBottom: windowSize.width <= 768 ? "5px" : "20px",
-          marginTop: windowSize.width <= 768 ? "20px" : "0px",
+          marginTop: windowSize.width <= 768 ? "15px" : "0px",
           flexShrink: 0,
         }}
       >
@@ -208,8 +208,8 @@ export default function Menu({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            width: windowSize.width <= 768 ? "40px" : "60px",
-            height: windowSize.width <= 768 ? "40px" : "60px",
+            width: windowSize.width <= 768 ? "50px" : "60px",
+            height: windowSize.width <= 768 ? "50px" : "60px",
             transition: "color 0.2s ease",
           }}
           onMouseEnter={(e) => (e.currentTarget.style.color = "#FFDB58")}
@@ -249,8 +249,8 @@ export default function Menu({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            width: windowSize.width <= 768 ? "40px" : "60px",
-            height: windowSize.width <= 768 ? "40px" : "60px",
+            width: windowSize.width <= 768 ? "50px" : "60px",
+            height: windowSize.width <= 768 ? "50px" : "60px",
             transition: "color 0.2s ease, border-color 0.2s ease",
           }}
           onMouseEnter={(e) => {
@@ -307,8 +307,8 @@ export default function Menu({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            width: windowSize.width <= 768 ? "40px" : "60px",
-            height: windowSize.width <= 768 ? "40px" : "60px",
+            width: windowSize.width <= 768 ? "50px" : "60px",
+            height: windowSize.width <= 768 ? "50px" : "60px",
             transition: "color 0.2s ease",
           }}
           onMouseEnter={(e) => (e.currentTarget.style.color = "#FFDB58")}
