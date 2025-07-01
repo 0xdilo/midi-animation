@@ -6,7 +6,7 @@ import { GeometryOptimizer } from "../utils/GeometryOptimizer";
 
 export default function Model(props) {
   const { nodes, materials } = useGLTF("/car/scene.gltf");
-  const { lightColor = "#ffffff" } = props;
+  const { lightColor = "#ffffff", isBackground = false } = props;
 
   // Create glowing materials for the headlights using useMemo to prevent recreation on every render
   const [lightMaterial1, lightMaterial2, sideLightMaterial] = useMemo(() => {
@@ -103,35 +103,39 @@ export default function Model(props) {
           material={materials["Material.011"]}
           frustumCulled={false}
         />
-        <group position={[-4, 0, 13]}>
-          <SpotLight
-            color={lightColor}
-            intensity={0.05}
-            angle={0.8}
-            penumbra={0.8}
-            distance={25}
-            decay={1.5}
-            power={3}
-            castShadow={false}
-            target-position={[Math.cos(15.7) * 10, 0.9, Math.sin(16.4) * 10]}
-          />
-        </group>
+        {!isBackground && (
+          <group position={[-4, 0, 13]}>
+            <SpotLight
+              color={lightColor}
+              intensity={0.05}
+              angle={0.8}
+              penumbra={0.8}
+              distance={25}
+              decay={1.5}
+              power={3}
+              castShadow={false}
+              target-position={[Math.cos(15.7) * 10, 0.9, Math.sin(16.4) * 10]}
+            />
+          </group>
+        )}
 
         {/* Right headlight */}
         <mesh geometry={nodes.Object_10.geometry} material={lightMaterial2} />
-        <group position={[4, 0, 13]}>
-          <SpotLight
-            color={lightColor}
-            intensity={0.05}
-            angle={0.8}
-            penumbra={0.8}
-            distance={25}
-            decay={1.5}
-            power={3}
-            castShadow={false}
-            target-position={[Math.cos(15.7) * 10, 0.9, Math.sin(16) * 10]}
-          />
-        </group>
+        {!isBackground && (
+          <group position={[4, 0, 13]}>
+            <SpotLight
+              color={lightColor}
+              intensity={0.05}
+              angle={0.8}
+              penumbra={0.8}
+              distance={25}
+              decay={1.5}
+              power={3}
+              castShadow={false}
+              target-position={[Math.cos(15.7) * 10, 0.9, Math.sin(16) * 10]}
+            />
+          </group>
+        )}
         <mesh
           geometry={nodes.Object_11.geometry}
           material={materials["Material.013"]}

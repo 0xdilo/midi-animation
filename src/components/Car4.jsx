@@ -6,7 +6,7 @@ import * as THREE from "three";
 
 export default function Model(props) {
   const { nodes, materials } = useGLTF("/car4/scene.gltf");
-  const { lightColor = "#ffffff" } = props;
+  const { lightColor = "#ffffff", isBackground = false } = props;
 
   // Create refs for wheel groups
   const wheelRefs = {
@@ -215,32 +215,36 @@ export default function Model(props) {
           scale={62.361}
         />
       </group>
-      <group position={[-4, 0.2, -1]}>
-        <SpotLight
-          color={lightColor}
-          intensity={0.05}
-          angle={0.8}
-          penumbra={0.8}
-          distance={25}
-          decay={1.5}
-          power={3}
-          castShadow={false}
-          target-position={[Math.cos(15.7) * 10, 0, Math.sin(16.4) * 10]}
-        />
-      </group>
-      <group position={[-4, 0.2, 1]}>
-        <SpotLight
-          color={lightColor}
-          intensity={0.05}
-          angle={0.8}
-          penumbra={0.8}
-          distance={25}
-          decay={1.5}
-          power={3}
-          castShadow={false}
-          target-position={[Math.cos(15.7) * 10, 0, -4]}
-        />
-      </group>
+      {!isBackground && (
+        <group position={[-4, 0.2, -1]}>
+          <SpotLight
+            color={lightColor}
+            intensity={0.05}
+            angle={0.8}
+            penumbra={0.8}
+            distance={25}
+            decay={1.5}
+            power={3}
+            castShadow={false}
+            target-position={[Math.cos(15.7) * 10, 0, Math.sin(16.4) * 10]}
+          />
+        </group>
+      )}
+      {!isBackground && (
+        <group position={[-4, 0.2, 1]}>
+          <SpotLight
+            color={lightColor}
+            intensity={0.05}
+            angle={0.8}
+            penumbra={0.8}
+            distance={25}
+            decay={1.5}
+            power={3}
+            castShadow={false}
+            target-position={[Math.cos(15.7) * 10, 0, -4]}
+          />
+        </group>
+      )}
     </group>
   );
 }

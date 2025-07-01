@@ -11,32 +11,54 @@ import MainCar4 from "./Car4";
 import MainCar5 from "./Car5";
 
 import City from "./City";
-import Car1 from "./Cars/Car1.jsx";
-import Car2 from "./Cars/Car2.jsx";
-import Car3 from "./Cars/Car3.jsx";
+
+// Function to get available background cars excluding the current main car
+const getAvailableBackgroundCars = (currentCarIndex) => {
+  const allCars = [
+    {
+      model: "MainCar",
+      component: MainCar,
+      z: 2.7,
+      speed: 120,
+      rotation: [0, Math.PI / 2, 0],
+    },
+    {
+      model: "MainCar2",
+      component: MainCar2,
+      z: 2.4,
+      speed: 130,
+      rotation: [0, Math.PI / 2, 0],
+    },
+    {
+      model: "MainCar3",
+      component: MainCar3,
+      z: 3,
+      speed: 125,
+      rotation: [0, Math.PI / 2, 0],
+    },
+    {
+      model: "MainCar5",
+      component: MainCar5,
+      z: 2.6,
+      speed: 115,
+      rotation: [0, Math.PI / 2, 0],
+    },
+    {
+      model: "MainCar4",
+      component: MainCar4,
+      z: 2.8,
+      speed: 135,
+      rotation: [0, Math.PI, 0],
+    },
+  ];
+
+  // Exclude the current main car (currentCarIndex % 5)
+  const activeCarIndex = currentCarIndex % 5;
+  return allCars.filter((_, index) => index !== activeCarIndex);
+};
 
 export const CARS_CONFIG = {
   spawnInterval: [3, 8], // Min and max seconds between spawns
-  positions: [
-    {
-      z: 2.7,
-      model: "Car1",
-      rotation: [0, Math.PI / 2, 0],
-      speed: 120,
-    },
-    {
-      z: 2.4,
-      model: "Car2",
-      rotation: [0, Math.PI / 2, 0],
-      speed: 130,
-    },
-    {
-      z: 3,
-      model: "Car3",
-      rotation: [0, Math.PI / 2, 0],
-      speed: 125,
-    },
-  ],
   startX: -400, // Where cars spawn from (left side)
   endX: 150, // Where cars disappear (right side)
 };
@@ -57,7 +79,19 @@ const CITIES_CONFIG = [
   { position: [820, -0.67, 70] },
 ];
 
-import React, { memo } from 'react';
+import React, { memo } from "react";
+
+// Memoized background car component for performance
+const BackgroundCar = memo(
+  ({ CarComponent, position, rotation, lightColor }) => (
+    <CarComponent
+      position={position}
+      rotation={rotation}
+      lightColor={lightColor}
+      isBackground={true}
+    />
+  ),
+);
 
 export const Scene = memo(function Scene({
   lightColor,
@@ -77,12 +111,13 @@ export const Scene = memo(function Scene({
   const lastPositionRef = useRef(null);
   const lastInteractionTime = useRef(null);
 
-  // State for spawned cars with object pooling
+  // State for spawned cars with object pooling and performance optimization
   const [oppositeCars, setOppositeCars] = useState([]);
   const lastSpawnTime = useRef(0);
   const lastCarUpdateTime = useRef(0);
   const carPositions = useRef(new Map());
   const poolSize = 20;
+  const frameCount = useRef(0);
 
   const targetSpeed = play ? MOVEMENT_CONFIG.targetSpeed : 0;
 
@@ -154,54 +189,70 @@ export const Scene = memo(function Scene({
       if (elapsedTime - lastInteractionTime.current > 2) {
         const currentAngle = controlsRef.current.getAzimuthalAngle();
         const targetAngle = Math.sin(elapsedTime * 0.2) * (Math.PI / 8);
-        const smoothedAngle = currentAngle + (targetAngle - currentAngle) * 0.01;
+        const smoothedAngle =
+          currentAngle + (targetAngle - currentAngle) * 0.01;
         controlsRef.current.setAzimuthalAngle(smoothedAngle);
 
         // Smooth cinematic zoom movement
         const minZoomDistance = controlsRef.current.minDistance;
         const maxZoomDistance = controlsRef.current.maxDistance;
-        
+
         // Use a very slow, gentle oscillation
         const zoomSpeed = 0.008; // Much much slower
         const zoomPhase = elapsedTime * zoomSpeed;
-        
+
         // Gentle oscillation around middle distance, staying closer to mid-range
         const midDistance = (minZoomDistance + maxZoomDistance) * 0.5;
         const zoomAmplitude = (maxZoomDistance - minZoomDistance) * 0.15; // Only 15% of range
-        const targetDistance = midDistance + (zoomAmplitude * Math.sin(zoomPhase));
-        
+        const targetDistance =
+          midDistance + zoomAmplitude * Math.sin(zoomPhase);
+
         // Very smooth interpolation
-        const currentDistance = camera.position.distanceTo(controlsRef.current.target);
-        const newDistance = THREE.MathUtils.lerp(currentDistance, targetDistance, 0.002); // Even smoother
-        
+        const currentDistance = camera.position.distanceTo(
+          controlsRef.current.target,
+        );
+        const newDistance = THREE.MathUtils.lerp(
+          currentDistance,
+          targetDistance,
+          0.002,
+        ); // Even smoother
+
         // Apply the new distance
-        const direction = camera.position.clone().sub(controlsRef.current.target).normalize();
-        camera.position.copy(controlsRef.current.target).add(direction.multiplyScalar(newDistance));
+        const direction = camera.position
+          .clone()
+          .sub(controlsRef.current.target)
+          .normalize();
+        camera.position
+          .copy(controlsRef.current.target)
+          .add(direction.multiplyScalar(newDistance));
       }
     }
 
-    
-
-    // Fixed car spawning - much less frequent updates
+    // Performance optimized car spawning and updates
     const now = clock.getElapsedTime();
-    
-    // Only check for spawning every 100ms instead of every frame
+    frameCount.current++;
+
+    // Spawn new cars with low frequency
     if (now - lastSpawnTime.current > 0.1) {
-      if (Math.random() < 0.05 && oppositeCars.length < 5) { // 5% chance per check, max 5 cars
-        const randomCarConfig = CARS_CONFIG.positions[
-          Math.floor(Math.random() * CARS_CONFIG.positions.length)
-        ];
-        
-        // Throttled state update
+      // Check every 100ms
+      if (Math.random() < 0.05 && oppositeCars.length < 3) {
+        // Low 5% spawn chance, max 3 cars
+        const availableCars = getAvailableBackgroundCars(currentCarIndex);
+        const randomCarConfig =
+          availableCars[Math.floor(Math.random() * availableCars.length)];
+
+        // Single batched state update
         setOppositeCars((prev) => {
-          // Remove old cars outside bounds first
-          const cleaned = prev.filter(car => car.position[0] < CARS_CONFIG.endX);
-          
+          const cleaned = prev.filter(
+            (car) => car.position[0] < CARS_CONFIG.endX,
+          );
+
           return [
             ...cleaned,
             {
               id: Date.now() + Math.random(),
               model: randomCarConfig.model,
+              component: randomCarConfig.component,
               position: [CARS_CONFIG.startX, -1, randomCarConfig.z],
               speed: randomCarConfig.speed,
               rotation: randomCarConfig.rotation,
@@ -212,19 +263,20 @@ export const Scene = memo(function Scene({
       lastSpawnTime.current = now;
     }
 
-    // Update car positions less frequently to avoid state thrashing
-    if (now - lastCarUpdateTime.current > 0.1) { // Update every 100ms
-      setOppositeCars((prev) => {
-        return prev.map(car => {
-          const newX = car.position[0] + car.speed * 0.1; // Fixed timestep matching update frequency
+    // Update car positions every frame for smooth animation
+    setOppositeCars((prev) => {
+      if (prev.length === 0) return prev; // Skip if no cars
+
+      return prev
+        .map((car) => {
+          const newX = car.position[0] + car.speed * deltaTime; // Use actual deltaTime for smooth movement
           return {
             ...car,
             position: [newX, car.position[1], car.position[2]],
           };
-        }).filter(car => car.position[0] < CARS_CONFIG.endX);
-      });
-      lastCarUpdateTime.current = now;
-    }
+        })
+        .filter((car) => car.position[0] < CARS_CONFIG.endX);
+    });
   });
 
   return (
@@ -304,16 +356,17 @@ export const Scene = memo(function Scene({
         }}
       />
 
-      {oppositeCars.map((car) => {
-        const CarComponent = { Car1, Car2, Car3 }[car.model];
-        return CarComponent ? (
-          <CarComponent
+      {oppositeCars.map((car) =>
+        car.component ? (
+          <BackgroundCar
             key={car.id}
+            CarComponent={car.component}
             position={car.position}
             rotation={car.rotation}
+            lightColor={lightColor}
           />
-        ) : null;
-      })}
+        ) : null,
+      )}
     </>
   );
 });

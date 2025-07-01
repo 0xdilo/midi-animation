@@ -8,7 +8,7 @@ export default function Model(props) {
   const group = useRef();
   const { nodes, materials, animations } = useGLTF("/car2/scene.gltf");
   const { actions } = useAnimations(animations, group);
-  const { lightColor = "#ffffff" } = props;
+  const { lightColor = "#ffffff", isBackground = false } = props;
 
   // Create glowing materials for the headlights
   const [lightMaterial1, lightMaterial2] = useMemo(() => {
@@ -375,32 +375,36 @@ export default function Model(props) {
           </group>
         </group>
       </group>
-      <group position={[-1.1, -0.6, 3.9]}>
-        <SpotLight
-          color={lightColor}
-          intensity={0.05}
-          angle={0.8}
-          penumbra={0.8}
-          distance={25}
-          decay={1.5}
-          power={3}
-          castShadow={false}
-          target-position={[Math.cos(15.7) * 10, 0, Math.sin(16.4) * 10]}
-        />
-      </group>
-      <group position={[1.1, -0.6, 3.9]}>
-        <SpotLight
-          color={lightColor}
-          intensity={0.05}
-          angle={0.8}
-          penumbra={0.8}
-          distance={25}
-          decay={1.5}
-          power={3}
-          castShadow={false}
-          target-position={[Math.cos(15.7) * 10, 0, -4]}
-        />
-      </group>
+      {!isBackground && (
+        <group position={[-1.1, -0.6, 3.9]}>
+          <SpotLight
+            color={lightColor}
+            intensity={0.05}
+            angle={0.8}
+            penumbra={0.8}
+            distance={25}
+            decay={1.5}
+            power={3}
+            castShadow={false}
+            target-position={[Math.cos(15.7) * 10, 0, Math.sin(16.4) * 10]}
+          />
+        </group>
+      )}
+      {!isBackground && (
+        <group position={[1.1, -0.6, 3.9]}>
+          <SpotLight
+            color={lightColor}
+            intensity={0.05}
+            angle={0.8}
+            penumbra={0.8}
+            distance={25}
+            decay={1.5}
+            power={3}
+            castShadow={false}
+            target-position={[Math.cos(15.7) * 10, 0, -4]}
+          />
+        </group>
+      )}
     </group>
   );
 }

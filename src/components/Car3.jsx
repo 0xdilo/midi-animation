@@ -4,7 +4,7 @@ import { useFrame } from "@react-three/fiber";
 
 export default function Model(props) {
   const { nodes, materials } = useGLTF("/car3/scene.gltf");
-  const { lightColor = "#ffffff" } = props;
+  const { lightColor = "#ffffff", isBackground = false } = props;
 
   const wheelRefs = {
     frontRight: useRef(),

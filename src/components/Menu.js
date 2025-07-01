@@ -26,7 +26,7 @@ export default function Menu({
   const [isPlaying, setIsPlaying] = useState(false);
   const [windowSize, setWindowSize] = useState({ width: 0, height: 0 });
   const [isClosing, setIsClosing] = useState(false);
-  const iconSize = windowSize.width <= 768 ? 60 : 100;
+  const iconSize = windowSize.width <= 768 ? 40 : 100;
 
   useEffect(() => {
     if (audioControls) {
@@ -124,9 +124,9 @@ export default function Menu({
         zIndex: isFirstStart ? -1 : 1000,
         display: isFirstStart ? "none" : "flex",
         flexDirection: "column",
-        justifyContent: "space-evenly",
+        justifyContent: windowSize.width <= 768 ? "space-between" : "space-evenly",
         alignItems: "center", 
-        padding: windowSize.width <= 768 ? "10px" : "20px",
+        padding: windowSize.width <= 768 ? "8px 10px" : "20px",
         boxSizing: "border-box",
         overflow: "hidden", // No scrolling allowed
         animation: isClosing
@@ -140,9 +140,10 @@ export default function Menu({
       {/* Album cover */}
       <div
         style={{
-          width: windowSize.width <= 768 ? "min(200px, 30vh)" : "min(400px, 40vh)",
-          height: windowSize.width <= 768 ? "min(200px, 30vh)" : "min(400px, 40vh)",
-          marginBottom: windowSize.width <= 768 ? "10px" : "20px",
+          width: windowSize.width <= 768 ? "min(150px, 25vh)" : "min(500px, 50vh)",
+          height: windowSize.width <= 768 ? "min(150px, 25vh)" : "min(500px, 50vh)",
+          marginBottom: windowSize.width <= 768 ? "5px" : "20px",
+          marginTop: windowSize.width <= 768 ? "20px" : "0px",
           flexShrink: 0,
         }}
       >
@@ -157,7 +158,7 @@ export default function Menu({
       <div
         style={{
           textAlign: "center",
-          marginBottom: windowSize.width <= 768 ? "10px" : "20px",
+          marginBottom: windowSize.width <= 768 ? "5px" : "20px",
           color: "#fff",
           padding: "0 10px",
           flexShrink: 0,
@@ -165,8 +166,8 @@ export default function Menu({
       >
         <h2
           style={{
-            fontSize: "clamp(14px, 4vw, 24px)",
-            marginBottom: "10px",
+            fontSize: windowSize.width <= 768 ? "12px" : "clamp(16px, 4vw, 24px)",
+            marginBottom: windowSize.width <= 768 ? "5px" : "10px",
             fontFamily: '"Press Start 2P", cursive',
             lineHeight: 1.2,
             wordBreak: "break-word",
@@ -175,7 +176,11 @@ export default function Menu({
         >
           {currentAlbumDisplay?.title || "Loading Tracks..."}
         </h2>
-        <p style={{ fontSize: "clamp(12px, 3vw, 16px)", opacity: 0.8 }}>
+        <p style={{ 
+          fontSize: windowSize.width <= 768 ? "10px" : "clamp(12px, 3vw, 16px)", 
+          opacity: 0.8,
+          marginBottom: 0,
+        }}>
           {currentAlbumIndex + 1} / {albumData.length}
         </p>
       </div>
@@ -184,8 +189,8 @@ export default function Menu({
       <div
         style={{
           display: "flex",
-          gap: windowSize.width <= 768 ? "10px" : "15px",
-          marginBottom: windowSize.width <= 768 ? "15px" : "30px",
+          gap: windowSize.width <= 768 ? "8px" : "15px",
+          marginBottom: windowSize.width <= 768 ? "5px" : "30px",
           alignItems: "center",
           flexWrap: "wrap",
           justifyContent: "center",
@@ -203,8 +208,8 @@ export default function Menu({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            width: windowSize.width <= 768 ? "50px" : "60px",
-            height: windowSize.width <= 768 ? "50px" : "60px",
+            width: windowSize.width <= 768 ? "40px" : "60px",
+            height: windowSize.width <= 768 ? "40px" : "60px",
             transition: "color 0.2s ease",
           }}
           onMouseEnter={(e) => (e.currentTarget.style.color = "#FFDB58")}
@@ -244,8 +249,8 @@ export default function Menu({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            width: windowSize.width <= 768 ? "50px" : "60px",
-            height: windowSize.width <= 768 ? "50px" : "60px",
+            width: windowSize.width <= 768 ? "40px" : "60px",
+            height: windowSize.width <= 768 ? "40px" : "60px",
             transition: "color 0.2s ease, border-color 0.2s ease",
           }}
           onMouseEnter={(e) => {
@@ -302,8 +307,8 @@ export default function Menu({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            width: windowSize.width <= 768 ? "50px" : "60px",
-            height: windowSize.width <= 768 ? "50px" : "60px",
+            width: windowSize.width <= 768 ? "40px" : "60px",
+            height: windowSize.width <= 768 ? "40px" : "60px",
             transition: "color 0.2s ease",
           }}
           onMouseEnter={(e) => (e.currentTarget.style.color = "#FFDB58")}
@@ -338,49 +343,18 @@ export default function Menu({
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          gap: windowSize.width <= 768 ? "10px" : "20px",
+          gap: windowSize.width <= 768 ? "8px" : "15px",
           flexShrink: 0,
         }}
       >
-        {/* Download button */}
-        <button
-          style={{
-            background: "#FFDB58",
-            border: "2px solid #FFDB58",
-            color: "#000",
-            cursor: "pointer",
-            padding: windowSize.width <= 768 ? "10px 20px" : "15px 30px",
-            fontSize: windowSize.width <= 768 ? "12px" : "clamp(14px, 3vw, 18px)",
-            fontFamily: '"Press Start 2P", cursive',
-            borderRadius: "0",
-            textShadow: "none",
-            fontWeight: "bold",
-            transition: "all 0.3s ease",
-            animation: "pulse 2s infinite",
-            textTransform: "uppercase",
-            letterSpacing: "1px",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = "#fff";
-            e.currentTarget.style.borderColor = "#fff";
-            e.currentTarget.style.transform = "scale(1.05)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = "#FFDB58";
-            e.currentTarget.style.borderColor = "#FFDB58";
-            e.currentTarget.style.transform = "scale(1)";
-          }}
-        >
-          DOWNLOAD NOW
-        </button>
-
         {/* Social Links */}
         <div
           style={{
             display: "flex",
             justifyContent: "center",
-            gap: windowSize.width <= 768 ? "10px" : "15px",
+            gap: windowSize.width <= 768 ? "15px" : "20px",
             width: "100%",
+            marginBottom: windowSize.width <= 768 ? "5px" : "10px",
           }}
         >
         <a
@@ -393,7 +367,7 @@ export default function Menu({
             textDecoration: "none",
             transition: "color 0.2s ease",
           }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = "#1DA1F2")}
+          onMouseEnter={(e) => (e.currentTarget.style.color = "#FFDB58")}
           onMouseLeave={(e) => (e.currentTarget.style.color = "#fff")}
         >
           <FaBandcamp />
@@ -408,7 +382,7 @@ export default function Menu({
             textDecoration: "none",
             transition: "color 0.2s ease",
           }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = "#E1306C")}
+          onMouseEnter={(e) => (e.currentTarget.style.color = "#FFDB58")}
           onMouseLeave={(e) => (e.currentTarget.style.color = "#fff")}
         >
           <FaInstagram />
@@ -429,6 +403,38 @@ export default function Menu({
           <FaGlobe />
         </a>
         </div>
+
+        {/* Download button */}
+        <button
+          style={{
+            background: "#FFDB58",
+            border: "2px solid #FFDB58",
+            color: "#000",
+            cursor: "pointer",
+            padding: windowSize.width <= 768 ? "8px 16px" : "12px 24px",
+            fontSize: windowSize.width <= 768 ? "10px" : "14px",
+            fontFamily: '"Press Start 2P", cursive',
+            borderRadius: "0",
+            textShadow: "none",
+            fontWeight: "bold",
+            textTransform: "uppercase",
+            letterSpacing: "1px",
+            animation: "pulse 2s infinite",
+            transition: "all 0.3s ease",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "#fff";
+            e.currentTarget.style.borderColor = "#fff";
+            e.currentTarget.style.transform = "scale(1.05)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "#FFDB58";
+            e.currentTarget.style.borderColor = "#FFDB58";
+            e.currentTarget.style.transform = "scale(1)";
+          }}
+        >
+          DOWNLOAD NOW
+        </button>
       </div>
 
       {/* Close button */}

@@ -5,7 +5,7 @@ import * as THREE from "three";
 
 export default function Model(props) {
   const { nodes, materials } = useGLTF("/car5/scene.gltf");
-  const { lightColor = "#ffffff" } = props;
+  const { lightColor = "#ffffff", isBackground = false } = props;
 
   // Create glowing headlight materials
   const [headlightMaterial, headlightMaterial2] = useMemo(() => {
@@ -470,32 +470,36 @@ export default function Model(props) {
         </group>
 
         {/* Headlights */}
-        <group position={[-0.6, -0.61, 1.7]}>
-          <SpotLight
-            color={lightColor}
-            intensity={0.05}
-            angle={0.8}
-            penumbra={0.8}
-            distance={25}
-            decay={1.5}
-            power={3}
-            castShadow={false}
-            target-position={[Math.cos(15.7) * 10, -1, Math.sin(16.4) * 10]}
-          />
-        </group>
-        <group position={[0.6, -0.61, 1.7]}>
-          <SpotLight
-            color={lightColor}
-            intensity={0.05}
-            angle={0.8}
-            penumbra={0.8}
-            distance={25}
-            decay={1.5}
-            power={3}
-            castShadow={false}
-            target-position={[Math.cos(15.7) * 10, -1, -4]}
-          />
-        </group>
+        {!isBackground && (
+          <group position={[-0.6, -0.61, 1.7]}>
+            <SpotLight
+              color={lightColor}
+              intensity={0.05}
+              angle={0.8}
+              penumbra={0.8}
+              distance={25}
+              decay={1.5}
+              power={3}
+              castShadow={false}
+              target-position={[Math.cos(15.7) * 10, -1, Math.sin(16.4) * 10]}
+            />
+          </group>
+        )}
+        {!isBackground && (
+          <group position={[0.6, -0.61, 1.7]}>
+            <SpotLight
+              color={lightColor}
+              intensity={0.05}
+              angle={0.8}
+              penumbra={0.8}
+              distance={25}
+              decay={1.5}
+              power={3}
+              castShadow={false}
+              target-position={[Math.cos(15.7) * 10, -1, -4]}
+            />
+          </group>
+        )}
       </group>
     </group>
   );
