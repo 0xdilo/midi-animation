@@ -366,7 +366,7 @@ export default function Menu({
           }}
         >
           <a
-            href="https://twitter.com"
+            href="https://rogian.bandcamp.com/"
             target="_blank"
             rel="noopener noreferrer"
             style={{
@@ -381,7 +381,7 @@ export default function Menu({
             <FaBandcamp />
           </a>
           <a
-            href="https://instagram.com"
+            href="https://www.instagram.com/rogian_van_lucas/"
             target="_blank"
             rel="noopener noreferrer"
             style={{
@@ -396,7 +396,7 @@ export default function Menu({
             <FaInstagram />
           </a>
           <a
-            href="https://yourportfolio.com"
+            href="https://linktr.ee/rogian"
             target="_blank"
             rel="noopener noreferrer"
             style={{
