@@ -4,13 +4,13 @@ import * as THREE from 'three'
 import { GeometryOptimizer } from '../../utils/GeometryOptimizer'
 
 export default function Model(props) {
-  const { nodes, materials } = useGLTF('/cars/car1/car1-transformed.glb')
+  const { nodes, materials } = useGLTF('/cars/car1/car1-compressed.glb')
   
   const [optimizedGeometries, optimizedMaterials] = useMemo(() => {
     const geometries = {
-      Object_2: GeometryOptimizer.optimizeGeometry(nodes.Object_2?.geometry),
-      Object_3: GeometryOptimizer.optimizeGeometry(nodes.Object_3?.geometry),
-      Object_5: GeometryOptimizer.optimizeGeometry(nodes.Object_5?.geometry)
+      Object_2: nodes.Object_2?.geometry,
+      Object_3: nodes.Object_3?.geometry,
+      Object_5: nodes.Object_5?.geometry
     };
     
     const mats = {
@@ -52,5 +52,5 @@ export default function Model(props) {
   )
 }
 
-useGLTF.preload('/cars/car1/car1-transformed.glb')
+useGLTF.preload('/cars/car1/car1-compressed.glb')
 

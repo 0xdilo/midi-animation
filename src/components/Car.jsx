@@ -62,15 +62,15 @@ export default function Model(props) {
   useFrame((state, delta) => {
     updateWheels(delta);
   });
-  // Add cleanup for materials when component unmounts
-  useEffect(() => {
-    return () => {
-      // Dispose materials when component unmounts to prevent memory leaks
-      lightMaterial1.dispose();
-      lightMaterial2.dispose();
-      sideLightMaterial.dispose();
-    };
-  }, [lightMaterial1, lightMaterial2, sideLightMaterial]);
+  // Disabled cleanup to prevent disposing materials still in use
+  // useEffect(() => {
+  //   return () => {
+  //     // Dispose materials when component unmounts to prevent memory leaks
+  //     lightMaterial1.dispose();
+  //     lightMaterial2.dispose();
+  //     sideLightMaterial.dispose();
+  //   };
+  // }, [lightMaterial1, lightMaterial2, sideLightMaterial]);
 
   return (
     <group {...props} dispose={null}>

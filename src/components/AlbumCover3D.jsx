@@ -1,5 +1,5 @@
 import { useFrame } from "@react-three/fiber";
-import { useRef } from "react";
+import { useRef, useMemo, useEffect } from "react";
 import { TextureLoader } from "three";
 
 
@@ -10,8 +10,20 @@ export default function AlbumCover3D({ onClick }) {
   const rotation = useRef({ x: 0, y: 0 });
   const velocity = useRef({ x: 0, y: 0 });
 
-  const loader = new TextureLoader();
-  const texture = loader.load("/00-COVER.jpeg");
+  const texture = useMemo(() => {
+    const loader = new TextureLoader();
+    return loader.load("/00-COVER.jpeg");
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      // Only dispose if texture exists and isn't already disposed
+      if (texture && texture.image && !texture._disposed) {
+        texture._disposed = true;
+        texture.dispose();
+      }
+    };
+  }, [texture]);
 
   const handlePointerDown = (event) => {
     isDragging.current = true;

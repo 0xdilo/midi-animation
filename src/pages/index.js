@@ -89,25 +89,26 @@ export default function Home() {
     const isNoteOn = event.name === "Note on";
     const intensity = isNoteOn ? event.velocity / 127 : 0;
     
-    // For single-channel MIDI (track 0), enable both lights and vibrations
-    const shakeTrigger = isNoteOn && (track === 1 || track === 0);
-
-    if (isNoteOn && track === 0) {
+    // Determine if this song has 2 channels based on song index
+    // Only SEA-V3 (index 2) has 2 channels, all others have 1 channel
+    const songHasTwoChannels = currentSongIndexRef.current === 2; // Only SEA-V3
+    
+    // For 2-channel songs: track 0 = lights, track 1 = vibration
+    // For 1-channel songs: track 0 = both lights and vibration
+    
+    // Handle lighting (track 0 for all songs, or any track for 1-channel songs)
+    if (isNoteOn && (track === 0 || (!songHasTwoChannels && track === 1))) {
       const pair = colorPairs[Math.floor(Math.random() * colorPairs.length)];
-      // For song 1 (CRUISIN-V1), only trigger car lights, not scene lights
+      
+      // Special handling for CRUISIN-V1 (song 0) - only car lights
       if (currentSongIndexRef.current === 0) {
         setLightColor(prev => ({ ...prev, directional: pair.light }));
       } else {
         setLightColor({ scene: pair.scene, directional: pair.light });
       }
     }
-    
-    // Ensure car lights respond to all MIDI tracks, not just track 0
-    if (isNoteOn && (track === 1 || track === 0)) {
-      const pair = colorPairs[Math.floor(Math.random() * colorPairs.length)];
-      setLightColor(prev => ({ ...prev, directional: pair.light }));
-    }
 
+    // Handle shader effects for specific songs
     if (isNoteOn && currentSongIndexRef.current % 5 === 2) {
       const hue = (event.noteNumber * 10) % 360;
       setShaderColor(`hsl(${hue},100%,50%)`);
@@ -115,20 +116,26 @@ export default function Home() {
       setShaderColor("rgb(255, 255, 255)");
     }
 
+    // Handle vibration/shake effects
+    // For 2-channel: only track 1 triggers shake
+    // For 1-channel: both track 0 and track 1 trigger shake
+    const shouldShake = songHasTwoChannels ? (track === 1) : (track === 0 || track === 1);
+    
     setInstruments((prev) => ({
       ...prev,
       [track]: {
         value: isNoteOn ? 2 : 1,
         noteOn: isNoteOn,
-        intensity: (track === 1 || track === 0) ? intensity : 0,
-        shakeTrigger: (track === 1 || track === 0) ? shakeTrigger : false,
+        intensity: intensity,
+        shakeTrigger: isNoteOn && shouldShake,
       },
     }));
   }, []);
 
   // --- Memory management ---
   useEffect(() => {
-    MemoryManager.startCleanupCycle();
+    // Disabled automatic cleanup to prevent disposing resources still in use
+    // MemoryManager.startCleanupCycle();
     MemoryManager.logMemoryUsage();
 
     return () => {
@@ -557,7 +564,7 @@ export default function Home() {
           
         }}
         performance={{ min: 0.5 }}
-        frameloop="demand"
+        frameloop="always"
         onCreated={({ gl }) => {
           gl.compile = () => {}; // Disable shader compilation caching
         }}

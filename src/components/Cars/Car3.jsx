@@ -3,7 +3,7 @@ import { useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 
 export default function Model(props) {
-  const { nodes, materials } = useGLTF('/cars/car3/scene-transformed.glb')
+  const { nodes, materials } = useGLTF('/cars/car3/scene-compressed.glb')
   
   const optimizedMaterials = useMemo(() => ({
     bottom: new THREE.MeshLambertMaterial({ 
@@ -188,5 +188,5 @@ export default function Model(props) {
   )
 }
 
-useGLTF.preload('/cars/car3/scene-transformed.glb')
+useGLTF.preload('/cars/car3/scene-compressed.glb')
 

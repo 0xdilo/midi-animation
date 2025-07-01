@@ -7,11 +7,11 @@ import { FaGlobe, FaInstagram, FaBandcamp } from "react-icons/fa";
 // Static cover paths, assuming order matches serverTracks from server
 // If serverTracks has more items than this array, covers will cycle.
 const albumCovers = [
-  "/album.png",
-  "/album2.png",
-  "/album3.png",
-  "album4.png",
-  "album5.png",
+  "/album.webp",
+  "/album2.webp",
+  "/album3.webp",
+  "/album4.webp",
+  "/album5.webp",
 ];
 
 export default function Menu({
@@ -26,7 +26,7 @@ export default function Menu({
   const [isPlaying, setIsPlaying] = useState(false);
   const [windowSize, setWindowSize] = useState({ width: 0, height: 0 });
   const [isClosing, setIsClosing] = useState(false);
-  const iconSize = 100;
+  const iconSize = windowSize.width <= 768 ? 60 : 100;
 
   useEffect(() => {
     if (audioControls) {
@@ -98,7 +98,7 @@ export default function Menu({
 
   const currentAlbumDisplay = albumData[currentAlbumIndex];
   const currentCover =
-    albumCovers[currentAlbumIndex % albumCovers.length] || "/album.png"; // Fallback cover
+    albumCovers[currentAlbumIndex % albumCovers.length] || "/album.webp"; // Fallback cover
 
   // Handle menu close animation
   const handleClose = () => {
@@ -124,28 +124,25 @@ export default function Menu({
         zIndex: isFirstStart ? -1 : 1000,
         display: isFirstStart ? "none" : "flex",
         flexDirection: "column",
-        justifyContent: "space-between",
-        alignItems: "center",
-        padding: "20px",
-        paddingTop: "clamp(40px, 10vh, 80px)",
+        justifyContent: "space-evenly",
+        alignItems: "center", 
+        padding: windowSize.width <= 768 ? "10px" : "20px",
         boxSizing: "border-box",
-        overflowY: "auto",
-        overflowX: "hidden",
+        overflow: "hidden", // No scrolling allowed
         animation: isClosing
           ? "menuSlideOut 0.3s ease-in"
           : "menuSlide 0.3s ease-out",
         visibility: isFirstStart ? "hidden" : "visible",
         opacity: isFirstStart ? 0 : 1,
-        overflowX: "hidden",
         transform: isClosing ? "translateY(100%)" : "translateY(0)",
       }}
     >
       {/* Album cover */}
       <div
         style={{
-          width: "min(500px, 110vw)",
-          height: "min(500px, 110vw)",
-          marginBottom: "20px",
+          width: windowSize.width <= 768 ? "min(200px, 30vh)" : "min(400px, 40vh)",
+          height: windowSize.width <= 768 ? "min(200px, 30vh)" : "min(400px, 40vh)",
+          marginBottom: windowSize.width <= 768 ? "10px" : "20px",
           flexShrink: 0,
         }}
       >
@@ -160,9 +157,10 @@ export default function Menu({
       <div
         style={{
           textAlign: "center",
-          marginBottom: "20px",
+          marginBottom: windowSize.width <= 768 ? "10px" : "20px",
           color: "#fff",
           padding: "0 10px",
+          flexShrink: 0,
         }}
       >
         <h2
@@ -186,11 +184,12 @@ export default function Menu({
       <div
         style={{
           display: "flex",
-          gap: "15px",
-          marginBottom: "30px",
+          gap: windowSize.width <= 768 ? "10px" : "15px",
+          marginBottom: windowSize.width <= 768 ? "15px" : "30px",
           alignItems: "center",
           flexWrap: "wrap",
           justifyContent: "center",
+          flexShrink: 0,
         }}
       >
         <button
@@ -204,8 +203,8 @@ export default function Menu({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            width: "60px",
-            height: "60px",
+            width: windowSize.width <= 768 ? "50px" : "60px",
+            height: windowSize.width <= 768 ? "50px" : "60px",
             transition: "color 0.2s ease",
           }}
           onMouseEnter={(e) => (e.currentTarget.style.color = "#FFDB58")}
@@ -245,8 +244,8 @@ export default function Menu({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            width: "60px",
-            height: "60px",
+            width: windowSize.width <= 768 ? "50px" : "60px",
+            height: windowSize.width <= 768 ? "50px" : "60px",
             transition: "color 0.2s ease, border-color 0.2s ease",
           }}
           onMouseEnter={(e) => {
@@ -303,8 +302,8 @@ export default function Menu({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            width: "60px",
-            height: "60px",
+            width: windowSize.width <= 768 ? "50px" : "60px",
+            height: windowSize.width <= 768 ? "50px" : "60px",
             transition: "color 0.2s ease",
           }}
           onMouseEnter={(e) => (e.currentTarget.style.color = "#FFDB58")}
@@ -333,79 +332,25 @@ export default function Menu({
         </button>
       </div>
 
-      {/* Social Links */}
+      {/* Bottom section with social links and download */}
       <div
         style={{
           display: "flex",
-          justifyContent: "center",
-          gap: "15px",
-          marginTop: "auto",
-          paddingBottom: "20px",
-          width: "100%",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: windowSize.width <= 768 ? "10px" : "20px",
+          flexShrink: 0,
         }}
       >
-        <a
-          href="https://twitter.com"
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{
-            color: "#fff",
-            fontSize: "30px",
-            textDecoration: "none",
-            transition: "color 0.2s ease",
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = "#1DA1F2")}
-          onMouseLeave={(e) => (e.currentTarget.style.color = "#fff")}
-        >
-          <FaBandcamp />
-        </a>
-        <a
-          href="https://instagram.com"
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{
-            color: "#fff",
-            fontSize: "30px",
-            textDecoration: "none",
-            transition: "color 0.2s ease",
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = "#E1306C")}
-          onMouseLeave={(e) => (e.currentTarget.style.color = "#fff")}
-        >
-          <FaInstagram />
-        </a>
-        <a
-          href="https://yourportfolio.com"
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{
-            color: "#fff",
-            fontSize: "30px",
-            textDecoration: "none",
-            transition: "color 0.2s ease",
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = "#FFDB58")}
-          onMouseLeave={(e) => (e.currentTarget.style.color = "#fff")}
-        >
-          <FaGlobe />
-        </a>
-      </div>
-
-      {/* Download button */}
-      <div
-        style={{
-          marginTop: "20px",
-          marginBottom: "20px",
-        }}
-      >
+        {/* Download button */}
         <button
           style={{
             background: "#FFDB58",
             border: "2px solid #FFDB58",
             color: "#000",
             cursor: "pointer",
-            padding: "15px 30px",
-            fontSize: "clamp(14px, 3vw, 18px)",
+            padding: windowSize.width <= 768 ? "10px 20px" : "15px 30px",
+            fontSize: windowSize.width <= 768 ? "12px" : "clamp(14px, 3vw, 18px)",
             fontFamily: '"Press Start 2P", cursive',
             borderRadius: "0",
             textShadow: "none",
@@ -428,6 +373,62 @@ export default function Menu({
         >
           DOWNLOAD NOW
         </button>
+
+        {/* Social Links */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            gap: windowSize.width <= 768 ? "10px" : "15px",
+            width: "100%",
+          }}
+        >
+        <a
+          href="https://twitter.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            color: "#fff",
+            fontSize: windowSize.width <= 768 ? "24px" : "30px",
+            textDecoration: "none",
+            transition: "color 0.2s ease",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = "#1DA1F2")}
+          onMouseLeave={(e) => (e.currentTarget.style.color = "#fff")}
+        >
+          <FaBandcamp />
+        </a>
+        <a
+          href="https://instagram.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            color: "#fff",
+            fontSize: windowSize.width <= 768 ? "24px" : "30px",
+            textDecoration: "none",
+            transition: "color 0.2s ease",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = "#E1306C")}
+          onMouseLeave={(e) => (e.currentTarget.style.color = "#fff")}
+        >
+          <FaInstagram />
+        </a>
+        <a
+          href="https://yourportfolio.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            color: "#fff",
+            fontSize: windowSize.width <= 768 ? "24px" : "30px",
+            textDecoration: "none",
+            transition: "color 0.2s ease",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = "#FFDB58")}
+          onMouseLeave={(e) => (e.currentTarget.style.color = "#fff")}
+        >
+          <FaGlobe />
+        </a>
+        </div>
       </div>
 
       {/* Close button */}

@@ -9,10 +9,10 @@ export class MemoryManager {
   static startCleanupCycle() {
     if (this.intervalId) return;
     
-    // Run cleanup every 30 seconds
+    // Run cleanup every 2 minutes (less aggressive)
     this.intervalId = setInterval(() => {
       this.forceGarbageCollection();
-    }, 30000);
+    }, 120000);
   }
 
   static stopCleanupCycle() {
@@ -59,8 +59,8 @@ export class MemoryManager {
       }
     });
 
-    // Clear optimizer caches
-    GeometryOptimizer.clearCache();
+    // Don't clear optimizer caches - resources still in use
+    // GeometryOptimizer.clearCache();
 
     // Force garbage collection if available
     if (window.gc) {

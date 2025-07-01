@@ -14,41 +14,27 @@ import City from "./City";
 import Car1 from "./Cars/Car1.jsx";
 import Car2 from "./Cars/Car2.jsx";
 import Car3 from "./Cars/Car3.jsx";
-import Car4 from "./Cars/Car4.jsx";
-import Car5 from "./Cars/Car5.jsx";
 
 export const CARS_CONFIG = {
-  spawnInterval: [2, 8], // Min and max seconds between spawns
+  spawnInterval: [3, 8], // Min and max seconds between spawns
   positions: [
     {
       z: 2.7,
       model: "Car1",
       rotation: [0, Math.PI / 2, 0],
-      speed: 150,
+      speed: 120,
     },
     {
       z: 2.4,
       model: "Car2",
       rotation: [0, Math.PI / 2, 0],
-      speed: 160,
+      speed: 130,
     },
     {
       z: 3,
       model: "Car3",
       rotation: [0, Math.PI / 2, 0],
-      speed: 140,
-    },
-    {
-      z: 2.7,
-      model: "Car4",
-      rotation: [0, Math.PI / 2, 0],
-      speed: 155,
-    },
-    {
-      z: 2.8,
-      model: "Car5",
-      rotation: [0, Math.PI / 2, 0],
-      speed: 145,
+      speed: 125,
     },
   ],
   startX: -400, // Where cars spawn from (left side)
@@ -90,19 +76,17 @@ export const Scene = memo(function Scene({
   const controlsRef = useRef();
   const lastPositionRef = useRef(null);
   const lastInteractionTime = useRef(null);
-  const zoomStartElapsedTime = useRef(null);
-  const initialCameraDistance = useRef(null);
-  const zoomPhaseOffset = useRef(0);
 
   // State for spawned cars with object pooling
   const [oppositeCars, setOppositeCars] = useState([]);
   const lastSpawnTime = useRef(0);
-  const carPool = useRef(new Map());
+  const lastCarUpdateTime = useRef(0);
+  const carPositions = useRef(new Map());
   const poolSize = 20;
 
   const targetSpeed = play ? MOVEMENT_CONFIG.targetSpeed : 0;
 
-  useFrame(({ clock }) => {
+  useFrame(({ clock }, deltaTime) => {
     const updatePosition = () => {
       if (!groupRef.current) return;
 
@@ -133,7 +117,7 @@ export const Scene = memo(function Scene({
         currentSpeedRef.current +=
           (targetSpeed - currentSpeedRef.current) *
           MOVEMENT_CONFIG.acceleration *
-          0.016;
+          deltaTime;
         const { startPosition, endPosition } = MOVEMENT_CONFIG.loop;
         const totalDistance = endPosition - startPosition;
         const playingTime = clock.getElapsedTime() - startTimeRef.current;
@@ -173,100 +157,74 @@ export const Scene = memo(function Scene({
         const smoothedAngle = currentAngle + (targetAngle - currentAngle) * 0.01;
         controlsRef.current.setAzimuthalAngle(smoothedAngle);
 
-        // Add zoom (dolly) movement by adjusting camera position
+        // Smooth cinematic zoom movement
         const minZoomDistance = controlsRef.current.minDistance;
         const maxZoomDistance = controlsRef.current.maxDistance;
-
-        // Initialize zoom start values if not set
-        if (zoomStartElapsedTime.current === null) {
-          zoomStartElapsedTime.current = elapsedTime;
-          initialCameraDistance.current = camera.position.distanceTo(controlsRef.current.target);
-
-          // Calculate phase offset to start the sine wave at the current camera distance
-          const normalizedDistance = (initialCameraDistance.current - minZoomDistance) / (maxZoomDistance - minZoomDistance);
-          // The sine wave goes from 0 to 1 (after *0.5 + 0.5). We need to invert this.
-          const sineValue = (normalizedDistance * 2) - 1;
-          zoomPhaseOffset.current = Math.asin(sineValue);
-        }
-
-        // Calculate time relative to the start of automatic movement
-        const autoMovementElapsedTime = elapsedTime - zoomStartElapsedTime.current;
-
-        // Oscillating target based on time since auto movement started, with phase offset
-        const oscillatingTargetZoomDistance = minZoomDistance + (maxZoomDistance - minZoomDistance) * (Math.sin(autoMovementElapsedTime * 0.1 + zoomPhaseOffset.current) * 0.5 + 0.5);
-
-        const blendDuration = 3; // seconds to blend the interpolation factor
-        const blendProgress = Math.min(1, autoMovementElapsedTime / blendDuration);
         
-        // Use a quadratic ease-in for the blend progress
-        const easedBlendProgress = Math.pow(blendProgress, 2);
-
-        // Dynamic interpolation factor that starts small and increases
-        const initialInterpolationFactor = 0.0001; // Very small initial factor
-        const targetInterpolationFactor = 0.01; // Original interpolation factor
-        const dynamicInterpolationFactor = THREE.MathUtils.lerp(
-          initialInterpolationFactor,
-          targetInterpolationFactor,
-          easedBlendProgress
-        );
-
-        // Smoothly interpolate the camera's distance towards the oscillatingTargetZoomDistance
+        // Use a very slow, gentle oscillation
+        const zoomSpeed = 0.008; // Much much slower
+        const zoomPhase = elapsedTime * zoomSpeed;
+        
+        // Gentle oscillation around middle distance, staying closer to mid-range
+        const midDistance = (minZoomDistance + maxZoomDistance) * 0.5;
+        const zoomAmplitude = (maxZoomDistance - minZoomDistance) * 0.15; // Only 15% of range
+        const targetDistance = midDistance + (zoomAmplitude * Math.sin(zoomPhase));
+        
+        // Very smooth interpolation
         const currentDistance = camera.position.distanceTo(controlsRef.current.target);
-        const newDistance = currentDistance + (oscillatingTargetZoomDistance - currentDistance) * dynamicInterpolationFactor;
-
+        const newDistance = THREE.MathUtils.lerp(currentDistance, targetDistance, 0.002); // Even smoother
+        
+        // Apply the new distance
         const direction = camera.position.clone().sub(controlsRef.current.target).normalize();
         camera.position.copy(controlsRef.current.target).add(direction.multiplyScalar(newDistance));
-      } else {
-        // Reset zoom start time, initial distance, and phase offset if automatic movement is not active
-        zoomStartElapsedTime.current = null;
-        initialCameraDistance.current = null;
-        zoomPhaseOffset.current = 0;
       }
     }
 
     
 
-    // Optimized opposite cars logic with object pooling
+    // Fixed car spawning - much less frequent updates
     const now = clock.getElapsedTime();
-    const deltaTime = 0.016;
-
-    if (
-      now - lastSpawnTime.current >
-      getRandomBetween(...CARS_CONFIG.spawnInterval)
-    ) {
-      if (oppositeCars.length < poolSize) {
-        const randomCarConfig =
-          CARS_CONFIG.positions[
-            Math.floor(Math.random() * CARS_CONFIG.positions.length)
+    
+    // Only check for spawning every 100ms instead of every frame
+    if (now - lastSpawnTime.current > 0.1) {
+      if (Math.random() < 0.05 && oppositeCars.length < 5) { // 5% chance per check, max 5 cars
+        const randomCarConfig = CARS_CONFIG.positions[
+          Math.floor(Math.random() * CARS_CONFIG.positions.length)
+        ];
+        
+        // Throttled state update
+        setOppositeCars((prev) => {
+          // Remove old cars outside bounds first
+          const cleaned = prev.filter(car => car.position[0] < CARS_CONFIG.endX);
+          
+          return [
+            ...cleaned,
+            {
+              id: Date.now() + Math.random(),
+              model: randomCarConfig.model,
+              position: [CARS_CONFIG.startX, -1, randomCarConfig.z],
+              speed: randomCarConfig.speed,
+              rotation: randomCarConfig.rotation,
+            },
           ];
-        setOppositeCars((prev) => [
-          ...prev,
-          {
-            id: now,
-            model: randomCarConfig.model,
-            position: [CARS_CONFIG.startX, -1, randomCarConfig.z],
-            speed: randomCarConfig.speed,
-            rotation: randomCarConfig.rotation,
-          },
-        ]);
+        });
       }
       lastSpawnTime.current = now;
     }
 
-    setOppositeCars((prev) => {
-      const updated = [];
-      for (let i = 0; i < prev.length; i++) {
-        const car = prev[i];
-        const newX = car.position[0] + car.speed * deltaTime;
-        if (newX < CARS_CONFIG.endX) {
-          updated.push({
+    // Update car positions less frequently to avoid state thrashing
+    if (now - lastCarUpdateTime.current > 0.1) { // Update every 100ms
+      setOppositeCars((prev) => {
+        return prev.map(car => {
+          const newX = car.position[0] + car.speed * 0.1; // Fixed timestep matching update frequency
+          return {
             ...car,
             position: [newX, car.position[1], car.position[2]],
-          });
-        }
-      }
-      return updated;
-    });
+          };
+        }).filter(car => car.position[0] < CARS_CONFIG.endX);
+      });
+      lastCarUpdateTime.current = now;
+    }
   });
 
   return (
@@ -340,25 +298,21 @@ export const Scene = memo(function Scene({
         onStart={() => {
           setIsInteracting(true);
           lastInteractionTime.current = clock.getElapsedTime();
-          zoomStartElapsedTime.current = null; // Reset on interaction
-          initialCameraDistance.current = null; // Reset on interaction
         }}
         onEnd={() => {
           setIsInteracting(false);
-          zoomStartElapsedTime.current = null; // Reset on interaction end
-          initialCameraDistance.current = null; // Reset on interaction end
         }}
       />
 
       {oppositeCars.map((car) => {
-        const CarComponent = { Car1, Car2, Car3, Car4, Car5 }[car.model];
-        return (
+        const CarComponent = { Car1, Car2, Car3 }[car.model];
+        return CarComponent ? (
           <CarComponent
             key={car.id}
             position={car.position}
             rotation={car.rotation}
           />
-        );
+        ) : null;
       })}
     </>
   );

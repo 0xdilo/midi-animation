@@ -3,72 +3,19 @@ import * as THREE from 'three';
 export class GeometryOptimizer {
   static cache = new Map();
   static materialCache = new Map();
+  static MAX_CACHE_SIZE = 50;
 
   static optimizeGeometry(geometry) {
     if (!geometry) return geometry;
     
-    // Create a hash key for the geometry
-    const key = this.getGeometryHash(geometry);
-    
-    if (this.cache.has(key)) {
-      return this.cache.get(key);
-    }
-
-    // Clone and optimize
-    const optimized = geometry.clone();
-    
-    // Merge vertices to reduce complexity
-    if (optimized.attributes.position) {
-      optimized.setAttribute('position', 
-        new THREE.Float32BufferAttribute(
-          this.compressFloatArray(optimized.attributes.position.array), 
-          3
-        )
-      );
-    }
-
-    // Simplify normals
-    if (optimized.attributes.normal) {
-      optimized.setAttribute('normal', 
-        new THREE.Float32BufferAttribute(
-          this.compressFloatArray(optimized.attributes.normal.array), 
-          3
-        )
-      );
-    }
-
-    // Compress UV coordinates
-    if (optimized.attributes.uv) {
-      optimized.setAttribute('uv', 
-        new THREE.Float32BufferAttribute(
-          this.compressFloatArray(optimized.attributes.uv.array, 0.01), 
-          2
-        )
-      );
-    }
-
-    // Remove unused attributes
-    const keepAttributes = ['position', 'normal', 'uv'];
-    const toRemove = [];
-    
-    for (const name in optimized.attributes) {
-      if (!keepAttributes.includes(name)) {
-        toRemove.push(name);
-      }
-    }
-    
-    toRemove.forEach(name => optimized.deleteAttribute(name));
-
-    this.cache.set(key, optimized);
-    return optimized;
+    // Disable geometry optimization to prevent corruption
+    // Just return the original geometry
+    return geometry;
   }
 
-  static compressFloatArray(array, precision = 0.001) {
-    const compressed = new Float32Array(array.length);
-    for (let i = 0; i < array.length; i++) {
-      compressed[i] = Math.round(array[i] / precision) * precision;
-    }
-    return compressed;
+  static compressFloatArray(array, precision = 0.0001) {
+    // Don't compress - precision compression can corrupt geometry
+    return array;
   }
 
   static getGeometryHash(geometry) {
@@ -84,6 +31,14 @@ export class GeometryOptimizer {
     if (this.materialCache.has(key)) {
       return this.materialCache.get(key);
     }
+
+    // Don't dispose cached materials - they might still be in use
+    // if (this.materialCache.size >= this.MAX_CACHE_SIZE) {
+    //   const firstKey = this.materialCache.keys().next().value;
+    //   const oldMaterial = this.materialCache.get(firstKey);
+    //   oldMaterial.dispose();
+    //   this.materialCache.delete(firstKey);
+    // }
 
     let optimized;
     

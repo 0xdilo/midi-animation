@@ -46,12 +46,13 @@ export default function Model(props) {
   });
 
   // Add cleanup for materials when component unmounts
-  useEffect(() => {
-    return () => {
-      headlightMaterial.dispose();
-      headlightMaterial2.dispose();
-    };
-  }, [headlightMaterial, headlightMaterial2]);
+  // Disabled cleanup to prevent disposing materials still in use
+  // useEffect(() => {
+  //   return () => {
+  //     headlightMaterial.dispose();
+  //     headlightMaterial2.dispose();
+  //   };
+  // }, [headlightMaterial, headlightMaterial2]);
   return (
     <group {...props} dispose={null}>
       <group scale={0.03}>

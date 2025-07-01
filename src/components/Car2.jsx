@@ -31,12 +31,13 @@ export default function Model(props) {
   }, [lightColor]);
 
   // Add cleanup for materials when component unmounts
-  useEffect(() => {
-    return () => {
-      lightMaterial1.dispose();
-      lightMaterial2.dispose();
-    };
-  }, [lightMaterial1, lightMaterial2]);
+  // Disabled cleanup to prevent disposing materials still in use
+  // useEffect(() => {
+  //   return () => {
+  //     lightMaterial1.dispose();
+  //     lightMaterial2.dispose();
+  //   };
+  // }, [lightMaterial1, lightMaterial2]);
 
   // Create refs for all wheel groups
   const wheelRefs = {

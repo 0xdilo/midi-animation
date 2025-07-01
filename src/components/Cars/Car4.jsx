@@ -3,7 +3,7 @@ import { useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 
 export default function Model(props) {
-  const { nodes, materials } = useGLTF("/cars/car4/scene-transformed.glb");
+  const { nodes, materials } = useGLTF("/cars/car4/scene-compressed.glb");
 
   const optimizedMaterials = useMemo(
     () => ({
@@ -176,4 +176,4 @@ export default function Model(props) {
   );
 }
 
-useGLTF.preload("/cars/car4/scene-transformed.glb");
+useGLTF.preload("/cars/car4/scene-compressed.glb");
