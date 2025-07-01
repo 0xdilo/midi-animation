@@ -1,7 +1,7 @@
 import { useFrame, useThree } from "@react-three/fiber";
 import { useRef, useState, useMemo, useCallback } from "react";
 import { OrbitControls } from "@react-three/drei";
-import { Suspense } from "react";
+
 import * as THREE from "three";
 
 import MainCar from "./Car";
@@ -71,13 +71,14 @@ const CITIES_CONFIG = [
   { position: [820, -0.67, 70] },
 ];
 
-export function Scene({
+import React, { memo } from 'react';
+
+export const Scene = memo(function Scene({
   lightColor,
   play,
   instruments,
   currentCarIndex,
   lastPausedPosition,
-  updateCameraData,
   isInteracting,
   setIsInteracting,
 }) {
@@ -88,7 +89,10 @@ export function Scene({
   const shakeIntensity = useRef(0);
   const controlsRef = useRef();
   const lastPositionRef = useRef(null);
-  const lastInteractionTime = useRef(0);
+  const lastInteractionTime = useRef(null);
+  const zoomStartElapsedTime = useRef(null);
+  const initialCameraDistance = useRef(null);
+  const zoomPhaseOffset = useRef(0);
 
   // State for spawned cars with object pooling
   const [oppositeCars, setOppositeCars] = useState([]);
@@ -168,23 +172,59 @@ export function Scene({
         const targetAngle = Math.sin(elapsedTime * 0.2) * (Math.PI / 8);
         const smoothedAngle = currentAngle + (targetAngle - currentAngle) * 0.01;
         controlsRef.current.setAzimuthalAngle(smoothedAngle);
+
+        // Add zoom (dolly) movement by adjusting camera position
+        const minZoomDistance = controlsRef.current.minDistance;
+        const maxZoomDistance = controlsRef.current.maxDistance;
+
+        // Initialize zoom start values if not set
+        if (zoomStartElapsedTime.current === null) {
+          zoomStartElapsedTime.current = elapsedTime;
+          initialCameraDistance.current = camera.position.distanceTo(controlsRef.current.target);
+
+          // Calculate phase offset to start the sine wave at the current camera distance
+          const normalizedDistance = (initialCameraDistance.current - minZoomDistance) / (maxZoomDistance - minZoomDistance);
+          // The sine wave goes from 0 to 1 (after *0.5 + 0.5). We need to invert this.
+          const sineValue = (normalizedDistance * 2) - 1;
+          zoomPhaseOffset.current = Math.asin(sineValue);
+        }
+
+        // Calculate time relative to the start of automatic movement
+        const autoMovementElapsedTime = elapsedTime - zoomStartElapsedTime.current;
+
+        // Oscillating target based on time since auto movement started, with phase offset
+        const oscillatingTargetZoomDistance = minZoomDistance + (maxZoomDistance - minZoomDistance) * (Math.sin(autoMovementElapsedTime * 0.1 + zoomPhaseOffset.current) * 0.5 + 0.5);
+
+        const blendDuration = 3; // seconds to blend the interpolation factor
+        const blendProgress = Math.min(1, autoMovementElapsedTime / blendDuration);
+        
+        // Use a quadratic ease-in for the blend progress
+        const easedBlendProgress = Math.pow(blendProgress, 2);
+
+        // Dynamic interpolation factor that starts small and increases
+        const initialInterpolationFactor = 0.0001; // Very small initial factor
+        const targetInterpolationFactor = 0.01; // Original interpolation factor
+        const dynamicInterpolationFactor = THREE.MathUtils.lerp(
+          initialInterpolationFactor,
+          targetInterpolationFactor,
+          easedBlendProgress
+        );
+
+        // Smoothly interpolate the camera's distance towards the oscillatingTargetZoomDistance
+        const currentDistance = camera.position.distanceTo(controlsRef.current.target);
+        const newDistance = currentDistance + (oscillatingTargetZoomDistance - currentDistance) * dynamicInterpolationFactor;
+
+        const direction = camera.position.clone().sub(controlsRef.current.target).normalize();
+        camera.position.copy(controlsRef.current.target).add(direction.multiplyScalar(newDistance));
+      } else {
+        // Reset zoom start time, initial distance, and phase offset if automatic movement is not active
+        zoomStartElapsedTime.current = null;
+        initialCameraDistance.current = null;
+        zoomPhaseOffset.current = 0;
       }
     }
 
-    // Make sure controls are updated
-    if (controlsRef.current) {
-      controlsRef.current.update();
-      const { x, y, z } = camera.position;
-      const polarAngle = controlsRef.current?.getPolarAngle();
-      const azimuthalAngle = controlsRef.current?.getAzimuthalAngle();
-      updateCameraData({
-        position: { x: x.toFixed(2), y: y.toFixed(2), z: z.toFixed(2) },
-        rotation: {
-          polar: polarAngle?.toFixed(2),
-          azimuthal: azimuthalAngle?.toFixed(2),
-        },
-      });
-    }
+    
 
     // Optimized opposite cars logic with object pooling
     const now = clock.getElapsedTime();
@@ -300,9 +340,13 @@ export function Scene({
         onStart={() => {
           setIsInteracting(true);
           lastInteractionTime.current = clock.getElapsedTime();
+          zoomStartElapsedTime.current = null; // Reset on interaction
+          initialCameraDistance.current = null; // Reset on interaction
         }}
         onEnd={() => {
           setIsInteracting(false);
+          zoomStartElapsedTime.current = null; // Reset on interaction end
+          initialCameraDistance.current = null; // Reset on interaction end
         }}
       />
 
@@ -318,7 +362,7 @@ export function Scene({
       })}
     </>
   );
-}
+});
 
 // Helper function to get random number between min and max
 function getRandomBetween(min, max) {

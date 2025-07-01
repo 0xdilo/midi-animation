@@ -42,7 +42,7 @@ export default function Home() {
   const [currentSongIndex, setCurrentSongIndex] = useState(0);
   const [shaderColor, setShaderColor] = useState("rgb(255, 255, 255)");
   const [startClicked, setStartClicked] = useState(false);
-  const [cameraData, setCameraData] = useState({ position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 } });
+  
   const [isInteracting, setIsInteracting] = useState(false);
 
   // --- Refs ---
@@ -343,8 +343,20 @@ export default function Home() {
   );
 
   // --- Render ---
+  useEffect(() => {
+    const setVh = () => {
+      const vh = window.innerHeight * 0.01;
+      document.documentElement.style.setProperty('--vh', `${vh}px`);
+    };
+
+    setVh();
+    window.addEventListener('resize', setVh);
+
+    return () => window.removeEventListener('resize', setVh);
+  }, []);
+
   return (
-    <div style={{ width: "100vw", height: "100vh", position: "relative" }}>
+    <div style={{ width: "100vw", height: "calc(var(--vh, 1vh) * 100)", position: "relative" }}>
       <audio ref={audioRef} />
       {/* background grid overlay */}
       <div
@@ -542,7 +554,7 @@ export default function Home() {
           alpha: false,
           preserveDrawingBuffer: false,
           failIfMajorPerformanceCaveat: true,
-          logarithmicDepthBuffer: true,
+          
         }}
         performance={{ min: 0.5 }}
         frameloop="demand"
@@ -561,7 +573,7 @@ export default function Home() {
           play={play}
           currentCarIndex={currentCarIndex}
           lastPausedPosition={lastPausedPosition}
-          updateCameraData={setCameraData}
+          
           isInteracting={isInteracting}
           setIsInteracting={setIsInteracting}
         />
@@ -569,7 +581,7 @@ export default function Home() {
           currentSongIndex={currentSongIndex}
           shaderColor={shaderColor}
         />
-        <PerformanceMonitor cameraData={cameraData} />
+        <PerformanceMonitor />
       </Canvas>
     </div>
   );

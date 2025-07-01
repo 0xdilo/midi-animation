@@ -129,7 +129,8 @@ export default function Menu({
         padding: "20px",
         paddingTop: "clamp(40px, 10vh, 80px)",
         boxSizing: "border-box",
-        overflow: "hidden",
+        overflowY: "auto",
+        overflowX: "hidden",
         animation: isClosing
           ? "menuSlideOut 0.3s ease-in"
           : "menuSlide 0.3s ease-out",

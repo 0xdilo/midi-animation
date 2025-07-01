@@ -158,7 +158,9 @@ const RippleShader = {
   `,
 };
 
-export function Effects({ currentSongIndex, shaderColor }) {
+import React, { memo } from 'react';
+
+export const Effects = memo(function Effects({ currentSongIndex, shaderColor }) {
   const { gl, scene, camera, clock } = useThree();
   const composer = useRef();
   const gameboyPass = useRef();
@@ -268,4 +270,4 @@ export function Effects({ currentSongIndex, shaderColor }) {
   }, 1);
 
   return null;
-}
+});
